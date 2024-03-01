@@ -9,12 +9,6 @@
     "autoload": {
         "files": [],
         "classmap": [],
-        "psr-0": {
-            "": "extend/"
-        },
-        "psr-3": {
-            "Psr\\Log\\": "vendor/psr/log"
-        },
         "psr-4": {
             "Imccc\\Snail\\": "src/"
         }
