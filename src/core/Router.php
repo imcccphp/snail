@@ -150,4 +150,9 @@ class Router
         }
 
     }
+
+    public function getRouteInfo()
+    {
+        return $this->parsedRoute;
+    }
 }
