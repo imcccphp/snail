@@ -11,8 +11,8 @@ class Config
      */
     public static function load($configfile)
     {
-        $cf = CONFIG_PATH . DS . $configfile . CFG_EXT;
-        $acf = APP_CONFIG_PATH . DS . $configfile . CFG_EXT;
+        $cf = CONFIG_PATH . DIRECTORY_SEPARATOR . $configfile . CFG_EXT;
+        $acf = APP_CONFIG_PATH . DIRECTORY_SEPARATOR . $configfile . CFG_EXT;
         if (file_exists($acf)) {
             return include $acf;
         } elseif (file_exists($cf)) {
@@ -67,7 +67,7 @@ class Config
     {
         $cfg = self::load($configfile);
         $cfg = array_merge($cfg, $val);
-        $acf = APP_CONFIG_PATH . DS . $configfile . CFG_EXT;
+        $acf = APP_CONFIG_PATH . DIRECTORY_SEPARATOR . $configfile . CFG_EXT;
         file_put_contents($acf, "<?php \n return " . var_export($cfg, true) . ";");
     }
 }
