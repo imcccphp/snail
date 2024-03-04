@@ -1,0 +1,14 @@
+@baseUrl = http://snail.local
+
+GET  {{baseUrl}}/about HTTP/1.1
+
+###
+GET {{baseUrl}}/welcome HTTP/1.1
+
+###
+
+POST {{baseUrl}}/submit HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo&password=bar
+

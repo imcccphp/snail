@@ -1,11 +1,21 @@
 <?php
+declare (strict_types = 1);
 
 namespace Imccc\Snail;
+
+defined('CONFIG_PATH') || define('CONFIG_PATH', dirname(__DIR__) . '/src/limbs/config');
+defined('CFG_EXT') || define('CFG_EXT', '.conf.php');
+
+use Imccc\Snail\Core\Dispatcher;
+use Imccc\Snail\Core\HandlerException;
+use Imccc\Snail\Core\Router;
 
 class Snail
 {
     const SNAIL = 'Snail';
     const SNAIL_VERSION = '0.0.1';
+
+    protected $router;
 
     public function __construct()
     {
@@ -17,25 +27,21 @@ class Snail
      */
     public function run()
     {
-        // 定义Composer自动加载文件的路径
-        $composerAutoloadPath = __DIR__ . '/vendor/autoload.php';
+        set_error_handler([HandlerException::class, 'handleException']);
+        $d = new Router();
 
-        // 检查autoload.php文件是否存在
-        if (file_exists($composerAutoloadPath)) {
-            // 如果存在，引入autoload.php文件
-            require_once $composerAutoloadPath;
-        } else {
-            // 如果不存在，执行没有Composer环境下的备选方案
-            // 例如，可以手动引入项目需要的文件，或者显示错误消息等
-            // 这里只是打印一个简单的错误消息作为示例
-            echo "Composer autoload file not found. Please run 'composer install'.";
-            exit; // 或者根据你的项目需求进行其他处理
-        }
+        $this->router = $d->getRouteInfo();
+        // print_r($d->getRouteInfo());
+        $dispatch = new Dispatcher($this->router);
+        $dispatch->dispatch();
+    }
 
-        // 之后的代码将会使用通过Composer自动加载的类库
-        // 例如，使用通过Composer安装的库
-        // $someLibrary = new SomeLibrary();
-
+    /**
+     * 销毁
+     */
+    public function __destruct()
+    {
+        echo '<br>Times:' . (microtime(true) - START) / 1000 . "ms";
     }
 
 }
