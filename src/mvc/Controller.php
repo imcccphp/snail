@@ -13,16 +13,22 @@ class Controller
     //
     public function input($ps = '')
     {
+        $alldata = $this->routes;
         if (empty($ps) || !isset($ps)) {
-            return $this->routes;
+            return $alldata;
         } else {
-            $params = explode('.', $ps);
-
-            foreach ($params as $key => $value) {
-                if (isset($this->routes[$value])) {
-                    return $this->routes[$value];
+            $pm = explode('.', $ps);
+            foreach ($pm as $val) {
+                if ($f == $val) {
+                    unset($pm[$val]); //移除文件名
+                } else {
+                    if (isset($alldata[$val])) {
+                        $alldata = $alldata[$val];
+                    }
                 }
             }
+            return $alldata;
+
         }
 
         return $this;
