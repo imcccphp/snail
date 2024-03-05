@@ -3,19 +3,18 @@ namespace Imccc\Snail\Mvc;
 
 class Controller
 {
-    protected $disp;
+    protected $routes;
 
-    public function __construct($disp)
+    public function __construct($routes)
     {
-        $this->disp = $disp;
-        print_r($this->disp);die;
+        $this->routes = $routes;
     }
 
     //
     public function input()
     {
 
-        print_r($this->disp);
+        print_r($this->routes);
 
         return $this;
     }
