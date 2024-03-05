@@ -1,6 +1,10 @@
 <?php
 namespace Imccc\Snail\Mvc;
 
+use Imccc\Snail\Core\Container;
+use Imccc\Snail\Services\LoggerService;
+use Imccc\Snail\Services\MailService;
+
 class Controller
 {
     protected $routes;
@@ -8,6 +12,25 @@ class Controller
     public function __construct($routes)
     {
         $this->routes = $routes;
+        $this->container();
+    }
+
+    /**
+     * 注册容器
+     */
+    public function container()
+    {
+        $container = new Container();
+
+        // 注册邮件服务到容器中
+        $mailService = $container->bind('MailService', function ($container) {
+            return new MailService();
+        });
+
+        // 注册日志服务到容器中
+        $logService = $container->bind('LoggerService', function ($container) {
+            return new LoggerService();
+        });
     }
 
     /**
