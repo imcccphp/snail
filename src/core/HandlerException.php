@@ -127,7 +127,13 @@ class HandlerException
                 $formattedTrace .= " 类型：{$item['args'][0]}";
                 $formattedTrace .= " 信息：{$item['args'][1]}";
                 $formattedTrace .= "</span>";
-                $formattedTrace .= "<pre style='color:green;margin: 0;'>源码：" . htmlspecialchars(self::getSourceCodeLine($file, $line)) . "</pre>\n";
+                if (isset($file) && isset($line)) {
+                    $sourceCode = self::getSourceCodeLine($file, $line);
+                    if (isset($sourceCode)) {
+                        $formattedTrace .= "<pre style='color:green;margin: 0;'>源码：" . htmlspecialchars($sourceCode) . "</pre>\n";
+                    }
+                }
+                // $formattedTrace .= "<pre style='color:green;margin: 0;'>源码：" . htmlspecialchars(self::getSourceCodeLine($file, $line)) . "</pre>\n";
             } else {
                 $formattedTrace .= "\n";
             }
