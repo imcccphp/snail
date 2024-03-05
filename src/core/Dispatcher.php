@@ -63,11 +63,14 @@ class Dispatcher
             // 处理 POST 数据
             self::processPostData($postData);
         }
+
+        return $this; // 支持链式调用
     }
 
     private static function processPostData($postData)
     {
         // 处理 POST 数据的逻辑
         // 这里可以根据实际需求进行处理，例如存储到数据库或者执行其他操作
+        return $this; // 支持链式调用
     }
 }
