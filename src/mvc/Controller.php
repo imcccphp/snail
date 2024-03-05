@@ -11,11 +11,21 @@ class Controller
     }
 
     //
-    public function input()
+    public function input($ps)
     {
+        if (empty($ps) || !isset($ps)) {
+            return $this->routes;
+        } else {
+            $params = explode('.', $ps);
 
-        print_r($this->routes);
+            foreach ($params as $key => $value) {
+                if (isset($this->routes[$value])) {
+                    return $this->routes[$value];
+                }
+            }
+        }
 
         return $this;
     }
+
 }
