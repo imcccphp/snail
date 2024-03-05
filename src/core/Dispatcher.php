@@ -21,7 +21,7 @@ class Dispatcher
 
     public function dispatch()
     {
-        if (array_key_exists('404', $this->routes)) {
+        if (in_array('404', $this->routes)) {
             header('HTTP/1.1 404 Not Found');
             exit('404 Not Found');
         } else {
