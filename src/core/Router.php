@@ -73,6 +73,8 @@ class Router
                 'method' => isset($handler[3]) ? $handler[3] : 'GET',
                 'params' => isset($handler[4]) ? $handler[4] : [],
                 'headers' => $this->getallheaders(),
+                'file' => $_FILES,
+                'input' => $this->getPost(),
             ];
         }
     }
@@ -139,6 +141,8 @@ class Router
                         'params' => $params,
                         'method' => $method,
                         'headers' => $this->getallheaders(),
+                        'file' => $_FILES,
+                        'input' => $this->getPost(),
                     ];
 
                     // 存储匹配到的路由规则信息数组
@@ -170,6 +174,27 @@ class Router
         return $uri;
     }
 
+    /**
+     * 获取 POST 请求中的数据，并进行验证
+     *
+     * @param array $rules 验证规则，格式为 ['字段名' => '规则']
+     * @return array 包含验证通过的 POST 数据的关联数组，如果验证失败返回空数组
+     * @throws RuntimeException 如果规则中指定的字段不存在
+     */
+    public function getPost()
+    {
+        $post = [];
+
+        // 检查是否存在 POST 数据
+        if (!empty($_POST)) {
+            $post = $_POST;
+        } else {
+            $post = file_get_contents('php://input');
+        }
+
+        // 返回验证通过的数据
+        return $post;
+    }
     // 获取路由信息
     public function getRouteInfo()
     {

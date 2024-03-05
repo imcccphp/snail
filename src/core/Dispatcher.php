@@ -29,7 +29,8 @@ class Dispatcher
             $action = $this->routes['action'];
             $params = $this->routes['params'];
             $method = $this->routes['method'];
-            $postData = $this->routes['post_data'] ?? [];
+            $postData = $this->routes['input'];
+            $file = $this->routes['file'];
         }
         // 构建控制器类名
         $controllerClass = $namespace . '\\' . $controller;
@@ -57,19 +58,7 @@ class Dispatcher
             echo $result;
         }
 
-        // 如果是 POST 请求，处理 POST 数据
-        if ($method === 'POST') {
-            // 处理 POST 数据
-            self::processPostData($postData);
-        }
-
         return $this; // 支持链式调用
     }
 
-    private static function processPostData($postData)
-    {
-        // 处理 POST 数据的逻辑
-        // 这里可以根据实际需求进行处理，例如存储到数据库或者执行其他操作
-        return $this; // 支持链式调用
-    }
 }
