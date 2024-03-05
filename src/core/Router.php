@@ -7,7 +7,7 @@
  * @version 0.0.1
  * @copyright Copyright (c) 2024 Imccc
  * @license MIT
- * @link https://github.com/Imccc/Snail
+ * @link https://github.com/Imcccphp/Snail
  */
 
 namespace Imccc\Snail\Core;
@@ -28,6 +28,9 @@ class Router
 
     // 请求的方法
     private $methodAllow = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'];
+
+    // 定义支持的URL后缀
+    private $supportedSuffixes = ['.do', '.html'];
 
     // 解析后的路由信息
     private $parsedRoute = [];
@@ -95,6 +98,9 @@ class Router
         // 存储匹配到的路由规则信息数组
         $matchedRoutes = [];
 
+        // 移除URL后缀，如果有的话
+        $uri = $this->removeUrlSuffix($uri);
+
         // 遍历路由配置
         foreach ($this->routes as $route => $handler) {
             // 解析路由配置数据
@@ -141,9 +147,9 @@ class Router
             }
         }
 
-        //如果没有匹配到输出404头
+        //如果没有匹配到返回404
         if (empty($matchedRoutes)) {
-            $this->parsedRoute = [];
+            $this->parsedRoute = ['404'];
         } else {
             // 有匹配到的路由信息数组
             $this->parsedRoute = $matchedRoutes;
@@ -151,6 +157,20 @@ class Router
 
     }
 
+    // 移除URL后缀
+    private function removeUrlSuffix($uri)
+    {
+        // 检查并移除支持的后缀
+        foreach ($this->supportedSuffixes as $suffix) {
+            if (substr($uri, -strlen($suffix)) === $suffix) {
+                $uri = substr($uri, 0, -strlen($suffix));
+                break; // 找到一个后缀就退出循环
+            }
+        }
+        return $uri;
+    }
+
+    // 获取路由信息
     public function getRouteInfo()
     {
         return $this->parsedRoute;

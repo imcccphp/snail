@@ -1,4 +1,12 @@
 <?php
+/**
+ * 配置类
+ *
+ * @package Imccc\Snail
+ * @since 0.0.1
+ * @author Imccc
+ * @copyright Copyright (c) 2024 Imccc.
+ */
 namespace Imccc\Snail\Core;
 
 class Config

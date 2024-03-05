@@ -41,7 +41,9 @@ class Snail
      */
     public function __destruct()
     {
-        echo '<br>Times:' . (microtime(true) - START) / 1000 . "ms";
+        if (Defined('START_TIME')) {
+            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS";
+        }
     }
 
 }

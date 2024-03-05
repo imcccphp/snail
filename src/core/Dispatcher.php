@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * 调度类
+ *
+ * @package Imccc\Snail
+ * @since 0.0.1
+ * @author Imccc
+ * @copyright Copyright (c) 2024 Imccc.
+ */
 namespace Imccc\Snail\Core;
 
 class Dispatcher
@@ -14,7 +21,7 @@ class Dispatcher
 
     public function dispatch()
     {
-        if (count($this->routes) < 1) {
+        if ($this->routes['404']) {
             header('HTTP/1.1 404 Not Found');
             exit('404 Not Found');
         } else {
