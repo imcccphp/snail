@@ -11,7 +11,7 @@ class Controller
     }
 
     //
-    public function input($ps)
+    public function input($ps = '')
     {
         if (empty($ps) || !isset($ps)) {
             return $this->routes;
