@@ -16,7 +16,6 @@ class Dispatcher
     public function __construct($routes)
     {
         $this->routes = $routes;
-
     }
 
     public function dispatch()
@@ -41,8 +40,8 @@ class Dispatcher
             exit('Controller class not found');
         }
 
-        // 创建控制器对象
-        $controllerObj = new $controllerClass();
+        // 创建控制器对象，并传入路由参数数组
+        $controllerObj = new $controllerClass($params);
 
         // 检查控制器方法是否存在
         if (!method_exists($controllerObj, $action)) {
@@ -51,7 +50,7 @@ class Dispatcher
         }
 
         // 调用控制器方法
-        $result = call_user_func_array([$controllerObj, $action], $params);
+        $result = call_user_func([$controllerObj, $action]);
 
         // 如果方法返回一个响应，直接输出
         if (!empty($result)) {
