@@ -19,12 +19,8 @@ class Controller
         } else {
             $pm = explode('.', $ps);
             foreach ($pm as $val) {
-                if ($f == $val) {
-                    unset($pm[$val]); //移除文件名
-                } else {
-                    if (isset($alldata[$val])) {
-                        $alldata = $alldata[$val];
-                    }
+                if (isset($alldata[$val])) {
+                    $alldata = $alldata[$val];
                 }
             }
             return $alldata;
