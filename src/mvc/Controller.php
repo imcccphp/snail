@@ -8,6 +8,7 @@ class Controller
     public function __construct($disp)
     {
         $this->disp = $disp;
+        print_r($this->disp);die;
     }
 
     //
