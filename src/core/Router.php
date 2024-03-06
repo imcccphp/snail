@@ -57,7 +57,10 @@ class Router
             // 如果是闭包函数
             return [
                 'is_closure' => true,
-                'closure' => $handler[0],
+                'closure' => function () use ($handler, $params) {
+                    // 执行闭包函数时传递参数
+                    call_user_func_array($handler[0], $params);
+                },
             ];
         } else {
             // 解析控制器、动作和命名空间
@@ -134,15 +137,9 @@ class Router
                 $params = $matches; // 提取路由参数
 
                 // 如果是闭包函数，直接执行
-                if (is_callable($handler[0])) {
-                    // 如果是闭包函数，使用 use 关键字传递参数
-                    return [
-                        'is_closure' => true,
-                        'closure' => function () use ($handler, $params) {
-                            // 执行闭包函数时传递参数
-                            call_user_func_array($handler[0], $params);
-                        },
-                    ];
+                if ($handler['is_closure']) {
+                    call_user_func($handler['closure']);
+                    exit();
                 } else {
                     // 构建并存储匹配的路由信息数据
                     $routeInfo = [
