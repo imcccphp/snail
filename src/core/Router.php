@@ -73,8 +73,8 @@ class Router
                 'method' => isset($handler[3]) ? $handler[3] : 'GET',
                 'params' => isset($handler[4]) ? $handler[4] : [],
                 'headers' => $this->getallheaders(),
-                'file' => $_FILES,
-                'input' => $this->getPost(),
+                'files' => $_FILES,
+                'postbody' => $this->getPost(),
             ];
         }
     }
@@ -94,7 +94,14 @@ class Router
     // 路由匹配
     private function match()
     {
-        $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+        // 获取请求的 URI，并确保不为空
+        $uri = isset($_SERVER['REQUEST_URI']) ? trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') : '';
+
+        // 如果 URI 为空，则将其设置为根目录路径
+        if ($uri === '') {
+            $uri = '/';
+        }
+
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
 
         // 存储匹配到的路由规则信息数组
@@ -115,8 +122,6 @@ class Router
                 continue;
             }
 
-            // 将路由中的通配符替换为正则表达式
-            // $pattern = '#^' . strtr($routePath, $this->patterns) . '$#';
             // 构建路由正则表达式
             $pattern = '#^' . preg_replace_callback('/:(\w+)/', function ($matches) use ($handler) {
                 return isset($this->patterns[$matches[1]]) ? '(' . $this->patterns[$matches[1]] . ')' : '([^/]+)';
@@ -141,8 +146,8 @@ class Router
                         'params' => $params,
                         'method' => $method,
                         'headers' => $this->getallheaders(),
-                        'file' => $_FILES,
-                        'input' => $this->getPost(),
+                        'files' => $_FILES,
+                        'postbody' => $this->getPost(),
                     ];
 
                     // 存储匹配到的路由规则信息数组
@@ -183,18 +188,48 @@ class Router
      */
     public function getPost()
     {
-        $post = [];
-
-        // 检查是否存在 POST 数据
-        if (!empty($_POST)) {
-            $post = $_POST;
-        } else {
-            $post = file_get_contents('php://input');
+        // 检查请求方法是否为 POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return [];
         }
 
-        // 返回验证通过的数据
-        return $post;
+        // 获取请求体大小并设置最大允许大小
+        $maxPostSize = ini_get('post_max_size');
+        $contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
+        if ($contentLength > $maxPostSize) {
+            // 请求体大小超出限制，这里可以根据实际情况抛出异常或返回错误信息
+            throw new RuntimeException('Request body is too large');
+            return [];
+        }
+
+        // 获取 POST 数据
+        $rawData = file_get_contents('php://input');
+        if (empty($rawData)) {
+            return [];
+        }
+
+        // 尝试解析 JSON 数据
+        $jsonData = json_decode($rawData, true);
+        if ($jsonData !== null && json_last_error() === JSON_ERROR_NONE) {
+            return $jsonData;
+        }
+
+        // 尝试解析 URL 编码数据
+        parse_str($rawData, $parsedData);
+        if (!empty($parsedData)) {
+            return $parsedData;
+        }
+
+        // 尝试解析 XML 数据
+        $xmlData = @simplexml_load_string($rawData);
+        if ($xmlData !== false) {
+            return $xmlData;
+        }
+
+        // 默认情况下，返回原始数据
+        return $rawData;
     }
+
     // 获取路由信息
     public function getRouteInfo()
     {
