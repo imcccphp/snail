@@ -49,7 +49,7 @@ class HandlerException
     public static function showError(\Throwable $exception): void
     {
         echo '<div style="color: black; border: 1px dashed red; margin: 30px;">';
-        echo '<h3 style="color: red; background-color: #eee; margin:0;padding: 10px;"> Snail Debug <small> - ' . $_SERVER['HTTP_URI'] . '</small><span style="float:right;">#' . self::$errorCount . '</span></h3>';
+        echo '<h3 style="color: red; background-color: #eee; margin:0;padding: 10px;"> Snail Debug <small> - ' . $_SERVER['HTTP_HOST'] . '</small><span style="float:right;">#' . self::$errorCount . '</span></h3>';
         echo '<div style="padding: 10px;">';
 
         if (DEBUG) {

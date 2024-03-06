@@ -134,9 +134,15 @@ class Router
                 $params = $matches; // 提取路由参数
 
                 // 如果是闭包函数，直接执行
-                if ($handler['is_closure']) {
-                    call_user_func($handler['closure']);
-                    exit();
+                if (is_callable($handler[0])) {
+                    // 如果是闭包函数，使用 use 关键字传递参数
+                    return [
+                        'is_closure' => true,
+                        'closure' => function () use ($handler, $params) {
+                            // 执行闭包函数时传递参数
+                            call_user_func_array($handler[0], $params);
+                        },
+                    ];
                 } else {
                     // 构建并存储匹配的路由信息数据
                     $routeInfo = [
@@ -190,15 +196,6 @@ class Router
     {
         // 检查请求方法是否为 POST
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            return [];
-        }
-
-        // 获取请求体大小并设置最大允许大小
-        $maxPostSize = ini_get('post_max_size');
-        $contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
-        if ($contentLength > $maxPostSize) {
-            // 请求体大小超出限制，这里可以根据实际情况抛出异常或返回错误信息
-            throw new RuntimeException('Request body is too large');
             return [];
         }
 
