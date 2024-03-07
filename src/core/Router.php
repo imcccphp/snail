@@ -165,6 +165,7 @@ class Router
                         'params' => $params,
                         'method' => $method,
                         'headers' => $this->getallheaders(),
+                        'middlewares' => $handler['middlewares'], // 添加中间件
                         'files' => $_FILES,
                         'postbody' => $this->getPost(),
                     ];
