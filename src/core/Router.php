@@ -64,20 +64,22 @@ class Router
      * @return array
      * @throws \Exception
      */
-    private function parseHandler($handler)
+    private function parseHandler($handler, $params)
     {
         if (is_callable($handler[0])) {
             // 如果是闭包函数，使用 use 关键字传递参数
             return [
                 'is_closure' => true,
-                'closure' => function () use ($handler) {
-                    return $handler[0]();
-                },
+                'closure' => $handler[0],
+                'params' => $params,
             ];
         } else {
             // 解析控制器、动作和命名空间
             list($method, $class) = explode('@', $handler[2]);
             $namespace = $handler[1];
+
+            // 添加检查中间件是否存在的条件
+            $middlewares = isset($handler['middlewares']) ? $handler['middlewares'] : [];
 
             return [
                 'is_closure' => false,
@@ -87,7 +89,7 @@ class Router
                 'path' => isset($handler[0]) ? $handler[0] : '', // 修正此处的索引
                 'method' => isset($handler[3]) ? $handler[3] : 'GET',
                 'params' => isset($handler[4]) ? $handler[4] : [],
-                'middlewares' => $handler['middlewares'] ?? [], // 添加中间件
+                'middlewares' => $middlewares, // 添加中间件
                 'headers' => $this->getallheaders(),
                 'files' => $_FILES,
                 'postbody' => $this->getPost(),
