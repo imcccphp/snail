@@ -51,7 +51,6 @@ class Router
     }
 
     // 解析路由配置数据
-    // 解析路由配置数据
     private function parseHandler($handler, $params)
     {
         if (is_callable($handler[0])) {
@@ -116,8 +115,8 @@ class Router
 
         // 遍历路由配置
         foreach ($this->routes as $route => $handler) {
-            // 解析路由配置数据
-            $handler = $this->parseHandler($handler);
+            // 解析路由配置数据，并传递路由参数
+            $handler = $this->parseHandler($handler, [$uri]);
             $routePath = $route; // 使用路由配置的键作为路径
             $routeMethods = isset($handler['method']) ? explode('|', strtoupper($handler['method'])) : [];
 
@@ -162,8 +161,7 @@ class Router
 
         //如果没有匹配到返回404
         if (empty($matchedRoutes)) {
-            http_response_code(404);
-            exit();
+            $this->parsedRoute = ['404'];
         } else {
             // 有匹配到的路由信息数组
             $this->parsedRoute = $matchedRoutes;
