@@ -1,7 +1,9 @@
 <?php
 /**
  * 路由类
- * @describe 获取请求的URL并匹配到对应的控制器和方法 返回一个数组给调度类处理，支持RESTful路由、支持路由表、支持路由参数、响应url和pathinfo、混杂模式、支持路由别名、支持路由分组、支持路由中间件、支持路由参数、支持路由别名、支持路由分组、支持路由中间件、支持路由参数、支持路由别名、支持路由分组、支持路由中间件、支持路由参数、支持路由别名、支持路由分组、支持路由中间件、支持路由参数、支持路由别名、支持路由分组、支持路由中间件
+ * @describe 获取请求的URL并匹配到对应的控制器和方法 返回一个数组给调度类处理，
+ * 支持RESTful路由、支持路由表、支持路由参数、响应url和pathinfo、混杂模式、支持路由别名、
+ * 支持路由分组、支持路由中间件、支持路由参数、支持路由别名、支持路由分组、支持路由中间件
  * @package Snail
  * @author Imccc
  * @version 0.0.1
@@ -62,6 +64,7 @@ class Router
                     call_user_func_array($handler[0], $params);
                 },
             ];
+
         } else {
             // 解析控制器、动作和命名空间
             list($method, $class) = explode('@', $handler[2]);
@@ -75,6 +78,7 @@ class Router
                 'path' => isset($handler[0]) ? $handler[0] : '', // 修正此处的索引
                 'method' => isset($handler[3]) ? $handler[3] : 'GET',
                 'params' => isset($handler[4]) ? $handler[4] : [],
+                'middlewares' => $handler['middlewares'] ?? [], // 添加中间件
                 'headers' => $this->getallheaders(),
                 'files' => $_FILES,
                 'postbody' => $this->getPost(),
@@ -140,6 +144,7 @@ class Router
                 if ($handler['is_closure']) {
                     call_user_func($handler['closure']);
                     exit();
+
                 } else {
                     // 构建并存储匹配的路由信息数据
                     $routeInfo = [
