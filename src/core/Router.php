@@ -20,6 +20,9 @@ class Router
 {
     private $routes = [];
 
+    // 中间件
+    private $middlewares = [];
+
     // 路由规则
     public $patterns = [
         ':any' => '[^/]+',
@@ -46,23 +49,31 @@ class Router
         $this->match();
     }
 
-    // 加载路由表
+    /**
+     * 载入路由表
+     * @throws \Exception
+     */
     private function loadRoutes()
     {
         $this->routes = Config::get('route');
     }
 
-    // 解析路由配置数据
-    private function parseHandler($handler, $params)
+    /**
+     * 解析路由
+     * @param $handler
+     * @return array
+     * @throws \Exception
+     */
+    private function parseHandler($handler)
     {
         if (is_callable($handler[0])) {
             // 如果是闭包函数，使用 use 关键字传递参数
             return [
                 'is_closure' => true,
-                'closure' => $handler[0],
-                'params' => $params,
+                'closure' => function () use ($handler) {
+                    return $handler[0]();
+                },
             ];
-
         } else {
             // 解析控制器、动作和命名空间
             list($method, $class) = explode('@', $handler[2]);
@@ -84,19 +95,9 @@ class Router
         }
     }
 
-    // 获取请求头
-    public function getallheaders()
-    {
-        $headers = array();
-        foreach ($_SERVER as $name => $value) {
-            if (substr($name, 0, 5) == 'HTTP_') {
-                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
-            }
-        }
-        return $headers;
-    }
-
-    // 路由匹配
+    /**
+     * 匹配路由
+     */
     private function match()
     {
         // 获取请求的 URI，并确保不为空
@@ -138,11 +139,18 @@ class Router
                 array_shift($matches); // 移除匹配的第一项（完整匹配）
                 $params = $matches; // 提取路由参数
 
-                // 如果是闭包函数，直接执行
-                if ($handler['is_closure']) {
-                    call_user_func($handler['closure']);
-                    exit();
+                // 添加中间件处理
+                foreach ($handler['middlewares'] as $middleware) {
+                    $middlewareInstance = new $middleware();
+                    $params = $middlewareInstance->handle($params);
+                }
 
+                // 如果是闭包函数,返回闭包函数和参数
+                if ($handler['is_closure']) {
+                    $routeInfo = [
+                        'is_closure' => true,
+                        'closure' => $handler['closure'],
+                    ];
                 } else {
                     // 构建并存储匹配的路由信息数据
                     $routeInfo = [
@@ -172,7 +180,12 @@ class Router
 
     }
 
-    // 移除URL后缀
+    /**
+     * 移除URL后缀
+     *
+     * @param string $uri
+     * @return string
+     */
     private function removeUrlSuffix($uri)
     {
         // 检查并移除支持的后缀
@@ -183,6 +196,23 @@ class Router
             }
         }
         return $uri;
+    }
+
+    /**
+     * 获取所有 HTTP 头信息
+     *
+     * @return array 包含所有 HTTP 头信息的数组
+     * @throws RuntimeException 如果获取失败
+     */
+    public function getallheaders()
+    {
+        $headers = array();
+        foreach ($_SERVER as $name => $value) {
+            if (substr($name, 0, 5) == 'HTTP_') {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
     }
 
     /**
@@ -227,7 +257,11 @@ class Router
         return $rawData;
     }
 
-    // 获取路由信息
+    /**
+     * 获取解析后的路由信息
+     *
+     * @return array 包含解析后的路由信息的数组
+     */
     public function getRouteInfo()
     {
         return $this->parsedRoute;
