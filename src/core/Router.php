@@ -51,10 +51,11 @@ class Router
     }
 
     // 解析路由配置数据
-    private function parseHandler($handler)
+    // 解析路由配置数据
+    private function parseHandler($handler, $params)
     {
         if (is_callable($handler[0])) {
-            // 如果是闭包函数
+            // 如果是闭包函数，使用 use 关键字传递参数
             return [
                 'is_closure' => true,
                 'closure' => function () use ($handler, $params) {
@@ -161,7 +162,8 @@ class Router
 
         //如果没有匹配到返回404
         if (empty($matchedRoutes)) {
-            $this->parsedRoute = ['404'];
+            http_response_code(404);
+            exit();
         } else {
             // 有匹配到的路由信息数组
             $this->parsedRoute = $matchedRoutes;
