@@ -59,10 +59,8 @@ class Router
             // 如果是闭包函数，使用 use 关键字传递参数
             return [
                 'is_closure' => true,
-                'closure' => function () use ($handler, $params) {
-                    // 执行闭包函数时传递参数
-                    call_user_func_array($handler[0], $params);
-                },
+                'closure' => $handler[0],
+                'params' => $params,
             ];
 
         } else {
