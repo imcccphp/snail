@@ -40,6 +40,9 @@ class Router
     // 解析后的路由信息
     private $parsedRoute = [];
 
+    // 中间件
+    private $middlewareGroups = [];
+
     // 构建方法
     public function __construct()
     {
