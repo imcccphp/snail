@@ -44,37 +44,38 @@ class Router
     private $middlewareGroups = [];
 
     // 构建方法
-    public function __construct()
+    public function __construct($routes = null)
     {
         // 载入路由表
-        $this->loadRoutes();
+        $this->loadRoutes($routes);
         // 路由匹配
-        $this->match();
+        $this->match($routes); // 传递 $routes 参数
     }
-
     /**
      * 载入路由表
      * @throws \Exception
      */
-    private function loadRoutes()
+    private function loadRoutes($routes = null)
     {
-        $this->routes = Config::get('route');
+        if ($routes !== null) {
+            $this->routes = $routes;
+        } else {
+            $this->routes = Config::get('route');
+        }
     }
-
     /**
      * 解析路由
      * @param $handler
      * @return array
      * @throws \Exception
      */
-    private function parseHandler($handler, $params)
+    private function parseHandler($handler)
     {
         if (is_callable($handler[0])) {
             // 如果是闭包函数，使用 use 关键字传递参数
             return [
                 'is_closure' => true,
                 'closure' => $handler[0],
-                'params' => $params,
             ];
         } else {
             // 解析控制器、动作和命名空间
@@ -103,8 +104,13 @@ class Router
     /**
      * 匹配路由
      */
-    private function match()
+    private function match($routes = null)
     {
+        // 如果传入了自定义路由规则，则加载这些规则
+        if ($routes !== null) {
+            $this->loadRoutes($routes);
+        }
+
         // 获取请求的 URI，并确保不为空
         $uri = isset($_SERVER['REQUEST_URI']) ? trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') : '';
 
@@ -124,7 +130,7 @@ class Router
         // 遍历路由配置
         foreach ($this->routes as $route => $handler) {
             // 解析路由配置数据，并传递路由参数
-            $handler = $this->parseHandler($handler, [$uri]);
+            $handler = $this->parseHandler($handler);
             $routePath = $route; // 使用路由配置的键作为路径
             $routeMethods = isset($handler['method']) ? explode('|', strtoupper($handler['method'])) : [];
 
@@ -143,12 +149,6 @@ class Router
                 // 匹配成功，执行对应的处理程序
                 array_shift($matches); // 移除匹配的第一项（完整匹配）
                 $params = $matches; // 提取路由参数
-
-                // 添加中间件处理
-                foreach ($handler['middlewares'] as $middleware) {
-                    $middlewareInstance = new $middleware();
-                    $params = $middlewareInstance->handle($params);
-                }
 
                 // 如果是闭包函数,返回闭包函数和参数
                 if ($handler['is_closure']) {
