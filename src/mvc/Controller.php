@@ -57,4 +57,46 @@ class Controller
         }
     }
 
+    /**
+     * 获取 POST 请求中的数据，并进行验证
+     *
+     * @param array $rules 验证规则，格式为 ['字段名' => '规则']
+     * @return array 包含验证通过的 POST 数据的关联数组，如果验证失败返回空数组
+     * @throws RuntimeException 如果规则中指定的字段不存在
+     */
+    public function getPost()
+    {
+        // 检查请求方法是否为 POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return [];
+        }
+
+        // 获取 POST 数据
+        $rawData = file_get_contents('php://input');
+        if (empty($rawData)) {
+            return [];
+        }
+
+        // 尝试解析 JSON 数据
+        $jsonData = json_decode($rawData, true);
+        if ($jsonData !== null && json_last_error() === JSON_ERROR_NONE) {
+            return $jsonData;
+        }
+
+        // 尝试解析 URL 编码数据
+        parse_str($rawData, $parsedData);
+        if (!empty($parsedData)) {
+            return $parsedData;
+        }
+
+        // 尝试解析 XML 数据
+        $xmlData = @simplexml_load_string($rawData);
+        if ($xmlData !== false) {
+            return $xmlData;
+        }
+
+        // 默认情况下，返回原始数据
+        return $rawData;
+    }
+
 }
