@@ -152,10 +152,11 @@ class Router
 
                 // 如果是闭包函数,返回闭包函数和参数
                 if ($handler['is_closure']) {
-                    $routeInfo = [
+                    $this->parsedRoute = [
                         'is_closure' => true,
                         'result' => $handler['closure'](...$params), // 执行闭包函数并传入参数
                     ];
+                    return; // 匹配到闭包函数后立即返回，不再继续匹配其他路由规则
                 } else {
                     // 构建并存储匹配的路由信息数据
                     $routeInfo = [
@@ -183,7 +184,6 @@ class Router
             // 有匹配到的路由信息数组
             $this->parsedRoute = $matchedRoutes;
         }
-
     }
 
     /**
