@@ -154,7 +154,7 @@ class Router
                 if ($handler['is_closure']) {
                     $routeInfo = [
                         'is_closure' => true,
-                        'closure' => $handler['closure'],
+                        'result' => $handler['closure'](...$params), // 执行闭包函数并传入参数
                     ];
                 } else {
                     // 构建并存储匹配的路由信息数据
@@ -270,6 +270,18 @@ class Router
      */
     public function getRouteInfo()
     {
+        // 如果解析后的路由信息是404错误，则直接返回404错误
+        if ($this->parsedRoute === ['404']) {
+            return $this->parsedRoute;
+        }
+
+        // 如果匹配到的路由信息是闭包函数，则直接返回闭包函数的信息
+        if ($this->parsedRoute['is_closure']) {
+            return $this->parsedRoute;
+        }
+
+        // 否则，返回匹配到的路由信息
         return $this->parsedRoute;
+
     }
 }
