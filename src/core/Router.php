@@ -160,6 +160,7 @@ class Router
                     } else {
                         // 构建并存储匹配的路由信息数据
                         $routeInfo = [
+                            'is_closure' => false,
                             'namespace' => $handler['namespace'] ?? '',
                             'controller' => $handler['controller'] ?? '',
                             'action' => $handler['action'] ?? '',

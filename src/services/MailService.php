@@ -1,10 +1,15 @@
 <?php
 namespace Imccc\Snail\Services;
 
+use Imccc\Snail\Core\Config;
+
 class MailService
 {
     public function sendMail($to, $subject, $body, $fromEmail = null, $fromName = null, $replyTo = null, $cc = null, $bcc = null, $attachments = array())
     {
+        $cfg = Config::get('mail');
+        ini_set('SMTP', $cfg['smtp']);
+
         // 构建邮件头
         $headers = "MIME-Version: 1.0\r\n";
         $headers .= "Content-type: text/html; charset=UTF-8\r\n";
