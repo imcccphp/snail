@@ -99,4 +99,21 @@ class Controller
         return $rawData;
     }
 
+    /**
+     * 获取所有 HTTP 头信息
+     *
+     * @return array 包含所有 HTTP 头信息的数组
+     * @throws RuntimeException 如果获取失败
+     */
+    public function getallheaders()
+    {
+        $headers = array();
+        foreach ($_SERVER as $name => $value) {
+            if (substr($name, 0, 5) == 'HTTP_') {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
+    }
+
 }

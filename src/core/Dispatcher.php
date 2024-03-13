@@ -30,11 +30,10 @@ class Dispatcher
     protected function handleRequest()
     {
         // 如查是闭包，则执行闭包函数和参数
-        if (isset($this->routes['closure'])) {
+        if ($this->routes['is_closure']) {
             $closure = $this->routes['closure'];
             exit();
-        }
-        if (in_array('404', $this->routes)) {
+        } else if (in_array('404', $this->routes)) {
             header('HTTP/1.1 404 Not Found');
             exit('404 Not Found');
         } else {
