@@ -9,6 +9,8 @@ class Controller
 {
     protected $routes;
 
+    protected $container;
+
     public function __construct($routes)
     {
         $this->routes = $routes;
@@ -20,15 +22,15 @@ class Controller
      */
     public function container()
     {
-        $container = new Container();
+        $this->container = new Container();
 
         // 注册邮件服务到容器中
-        $mailService = $container->bind('MailService', function ($container) {
+        $mailService = $container->bind('MailService', function () {
             return new MailService();
         });
 
         // 注册日志服务到容器中
-        $logService = $container->bind('LoggerService', function ($container) {
+        $logService = $container->bind('LoggerService', function () {
             return new LoggerService();
         });
     }
