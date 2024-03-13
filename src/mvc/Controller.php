@@ -25,12 +25,12 @@ class Controller
         $this->container = new Container();
 
         // 注册邮件服务到容器中
-        $mailService = $container->bind('MailService', function () {
+        $mailService = $this->container->bind('MailService', function () {
             return new MailService();
         });
 
         // 注册日志服务到容器中
-        $logService = $container->bind('LoggerService', function () {
+        $logService = $this->container->bind('LoggerService', function () {
             return new LoggerService();
         });
     }
