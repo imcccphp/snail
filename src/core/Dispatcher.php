@@ -60,8 +60,8 @@ class Dispatcher
     protected function executeRouteHandler()
     {
         $namespace = $this->routes['namespace'] ?? '';
-        $controller = $this->routes['controller'];
-        $action = $this->routes['action'];
+        $controller = $this->routes['controller'] ?? '';
+        $action = $this->routes['action'] ?? '';
 
         $controllerClass = $namespace . '\\' . $controller;
         if (!class_exists($controllerClass)) {

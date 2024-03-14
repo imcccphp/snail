@@ -181,7 +181,7 @@ class Router
         if (empty($matchedRoutes)) {
             $this->parsedRoute = [
                 'is_closure' => false,
-                '404' => true];
+                'status' => 404];
         } else {
             // 有匹配到的路由信息数组
             $this->parsedRoute = $matchedRoutes;
