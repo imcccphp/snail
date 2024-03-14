@@ -157,6 +157,7 @@ class Router
                             'is_closure' => true,
                             'closure' => $handler['closure'](...$params), // 执行闭包函数并传入参数
                         ];
+                        return; // 直接返回，不再处理其他路由
                     } else {
                         // 构建并存储匹配的路由信息数据
                         $routeInfo = [
@@ -178,7 +179,9 @@ class Router
 
         //如果没有匹配到返回404
         if (empty($matchedRoutes)) {
-            $this->parsedRoute = ['404'];
+            $this->parsedRoute = [
+                'is_closure' => false,
+                '404' => true];
         } else {
             // 有匹配到的路由信息数组
             $this->parsedRoute = $matchedRoutes;

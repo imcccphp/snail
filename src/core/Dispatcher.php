@@ -29,11 +29,12 @@ class Dispatcher
 
     protected function handleRequest()
     {
-        // 如查是闭包，则执行闭包函数和参数
-        if ($this->routes['is_closure']) {
+        if (isset($this->routes['is_closure']) && $this->routes['is_closure']) {
             $closure = $this->routes['closure'];
+            $response = call_user_func($closure, ...($this->routes['params'] ?? [])); // 假设有参数
+            echo $response;
             exit();
-        } else if (in_array('404', $this->routes)) {
+        } else if (isset($this->routes['status']) && $this->routes['status'] == '404') {
             header('HTTP/1.1 404 Not Found');
             exit('404 Not Found');
         } else {
@@ -45,7 +46,6 @@ class Dispatcher
 
     protected function executeMiddlewares($finalHandler)
     {
-        // 构建中间件执行链
         $next = $finalHandler;
         foreach (array_reverse($this->middlewares) as $middleware) {
             $next = function () use ($middleware, $next) {
@@ -59,30 +59,22 @@ class Dispatcher
 
     protected function executeRouteHandler()
     {
-        $namespace = $this->routes['namespace'];
+        $namespace = $this->routes['namespace'] ?? '';
         $controller = $this->routes['controller'];
         $action = $this->routes['action'];
 
-        // 构建控制器类名
         $controllerClass = $namespace . '\\' . $controller;
-
-        // 检查控制器类是否存在
         if (!class_exists($controllerClass)) {
-            throw new \RuntimeException('Controller class not found');
+            throw new \RuntimeException("Controller class {$controllerClass} not found");
         }
 
-        // 创建控制器对象，并传入路由参数数组
-        $controllerObj = new $controllerClass($this->routes);
+        $controllerObj = new $controllerClass($this->routes['params'] ?? []);
 
-        // 检查控制器方法是否存在
         if (!method_exists($controllerObj, $action)) {
-            throw new \RuntimeException('Action method not found');
+            throw new \RuntimeException("Action method {$action} not found in {$controllerClass}");
         }
 
-        // 调用控制器方法
         $result = call_user_func([$controllerObj, $action]);
-
-        // 输出结果
         if (!empty($result)) {
             echo $result;
         }
