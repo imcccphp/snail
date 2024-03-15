@@ -29,19 +29,16 @@ class Dispatcher
 
     protected function handleRequest()
     {
-        if (!empty($this->routes['is_closure']) && $this->routes['is_closure']) {
-            // Assuming $closure is callable and potentially expecting parameters,
-            // which could be passed here if they are part of $this->routes.
+        // If it's a closure, execute the closure and exit
+        if ($this->routes['is_closure']) {
             $closure = $this->routes['closure'];
-            $result = call_user_func($closure); // Call the closure
-            echo $result; // Output the result of the closure
-            return; // Stop further processing
-        } elseif (!empty($this->routes['status']) && $this->routes['status'] == '404') {
-            // Correctly handle a '404' status within the routes configuration
+            $closure(); // Execute the closure
+            exit(); // Exit after executing the closure
+        } else if (in_array('404', $this->routes)) {
             header('HTTP/1.1 404 Not Found');
             exit('404 Not Found');
         } else {
-            // Proceed with middleware execution and then the route handler if not a closure or 404
+            // If it's not a closure, continue with middleware and route handler execution
             $this->executeMiddlewares(function () {
                 $this->executeRouteHandler();
             });

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'smtp' => 'smtp.imccc.cc',
+    'smtp' => 'mail.imccc.cc',
     // 'port' => 25,
     // 'username' => 'imccc',
     // 'password' => 'imccc',

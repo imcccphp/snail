@@ -63,40 +63,6 @@ class Router
             $this->routes = Config::get('route');
         }
     }
-    /**
-     * 解析路由
-     * @param $handler
-     * @return array
-     * @throws \Exception
-     */
-    private function parseHandler($handler)
-    {
-        if (is_callable($handler[0])) {
-            // 如果是闭包函数
-            return [
-                'is_closure' => true,
-                'closure' => $handler[0],
-            ];
-        } else {
-            // 解析控制器、动作和命名空间
-            list($method, $class) = explode('@', $handler[2]);
-            $namespace = $handler[1];
-
-            // 添加检查中间件是否存在的条件
-            $middlewares = isset($handler['middlewares']) ? $handler['middlewares'] : [];
-
-            return [
-                'is_closure' => false,
-                'namespace' => $namespace,
-                'controller' => $class,
-                'action' => $method,
-                'path' => isset($handler[0]) ? $handler[0] : '', // 修正此处的索引
-                'method' => isset($handler[3]) ? $handler[3] : 'GET',
-                'params' => isset($handler[4]) ? $handler[4] : [],
-                'middlewares' => $middlewares, // 添加中间件
-            ];
-        }
-    }
 
     /**
      * 匹配路由
@@ -185,6 +151,42 @@ class Router
         } else {
             // 有匹配到的路由信息数组
             $this->parsedRoute = $matchedRoutes;
+        }
+        return;
+    }
+
+    /**
+     * 解析路由
+     * @param $handler
+     * @return array
+     * @throws \Exception
+     */
+    private function parseHandler($handler)
+    {
+        if (is_callable($handler[0])) {
+            // 如果是闭包函数
+            return [
+                'is_closure' => true,
+                'closure' => $handler[0],
+            ];
+        } else {
+            // 解析控制器、动作和命名空间
+            list($method, $class) = explode('@', $handler[2]);
+            $namespace = $handler[1];
+
+            // 添加检查中间件是否存在的条件
+            $middlewares = isset($handler['middlewares']) ? $handler['middlewares'] : [];
+
+            return [
+                'is_closure' => false,
+                'namespace' => $namespace,
+                'controller' => $class,
+                'action' => $method,
+                'path' => isset($handler[0]) ? $handler[0] : '', // 修正此处的索引
+                'method' => isset($handler[3]) ? $handler[3] : 'GET',
+                'params' => isset($handler[4]) ? $handler[4] : [],
+                'middlewares' => $middlewares, // 添加中间件
+            ];
         }
     }
 
