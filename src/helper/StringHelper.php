@@ -20,7 +20,7 @@ class StringHelper
      * @param $number
      * @return string
      */
-    public function numberTransCny($number)
+    public static function numberTransCny($number)
     {
         // 去除逗号
         $number = str_replace(",", "", $number);
@@ -104,7 +104,7 @@ class StringHelper
      * @param int $length
      * @return string
      */
-    public function getRandStr($length = 16)
+    public static function getRandStr($length = 16)
     {
         $str = '';
         $strPol = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
@@ -118,7 +118,7 @@ class StringHelper
      * 生成UUID V4
      * @return string
      */
-    public function uuidv4()
+    public static function uuidv4()
     {
         return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
             // 32 bits for "time_low"
