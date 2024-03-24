@@ -22,6 +22,15 @@ class Router
     private $parsedRoute = []; // 解析后的路由信息
     private $def = [];
 
+    protected $patterns = array(
+        ':any' => '[^/]+',
+        ':num' => '[0-9]+',
+        ':all' => '.*',
+    );
+    protected $methods = array('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD');
+    protected $middleware = [];
+    protected $supportedSuffixes = ['.do', 'html'];
+
     public function __construct($routes = null)
     {
         $this->loadRoutes($routes);
@@ -49,6 +58,8 @@ class Router
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']); // 获取请求方法
         $uri = isset($_SERVER['REQUEST_URI']) ? trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') : ''; // 获取请求的URI路径
+        $uri = $this->removeUrlSuffix($uri);
+
         if ($uri === '') {
             $uri = '/'; // 如果URI为空，则设置为根路径
         }
@@ -108,28 +119,43 @@ class Router
         $segments = explode('/', $uri);
 
         // 约定前三个段为group, controller和action
-        $group = isset($segments[0]) && $segments[0] ? ucfirst($segments[0]) : 'DefaultGroup';
-        $controller = isset($segments[1]) && $segments[1] ? ucfirst($segments[1]) : 'Home';
-        $action = $segments[2] ?? 'index';
+        // 获取分组，如果URL没有指定分组，则使用缺省设置
+        $group = $segments[0] ?? '';
+        if (array_key_exists($group, $this->def['group'])) {
+            $config = $this->def['group'][$group];
+        } else {
+            $config = $this->def['route']; // 使用全局缺省设置
+            array_unshift($segments, ''); // 因为没有分组，所以调整segments，为后续解析做准备
+        }
 
-        // 解析键值对参数
+        $controller = isset($segments[1]) && $segments[1] ? ucfirst($segments[1]) : $config['controller'];
+        $action = $segments[2] ?? $config['action'];
         $params = [];
-        for ($i = 3; $i < count($segments); $i += 2) {
-            if (isset($segments[$i + 1])) {
-                $params[$segments[$i]] = $segments[$i + 1];
+
+        // 是否使用key2value模式
+        if ($this->def['keyvalue']) {
+            $params = [];
+            for ($i = 3; $i < count($segments); $i += 2) {
+                if (isset($segments[$i + 1])) {
+                    $params[$segments[$i]] = $segments[$i + 1];
+                }
             }
+        } else {
+            $params = array_slice($segments, 3);
         }
 
         // 填充解析后的路由信息
         $this->parsedRoute = [
             'is_closure' => false,
-            'group' => $group,
+            'namespace' => $config['namespace'],
             'controller' => $controller,
+            'path' => $uri,
             'action' => $action,
             'params' => $params,
             'method' => $_SERVER['REQUEST_METHOD'],
-            // 根据需要添加中间件和其他信息
+            'middlewares' => $middlewares,
         ];
+
     }
 
     /**
