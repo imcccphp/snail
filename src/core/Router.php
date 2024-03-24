@@ -3,7 +3,7 @@
  * 路由类
  * @describe 获取请求的URL并匹配到对应的控制器和方法 返回一个数组给调度类处理，
  * 支持RESTful路由、支持路由表、支持路由参数、响应url和pathinfo、混杂模式、支持路由别名、
- * 支持路由分组、支持路由中间件、支持路由参数、支持路由别名、支持路由分组、支持路由中间件
+ * 支持路由分组、支持路由中间件、支持路由参数、
  * @package Snail
  * @author Imccc
  * @version 0.0.1
@@ -18,201 +18,174 @@ use Imccc\Snail\Core\Config;
 
 class Router
 {
-    private $routes = [];
+    private $routes = []; // 路由表
+    private $parsedRoute = []; // 解析后的路由信息
+    private $def = [];
 
-    // 中间件
-    private $middlewares = [];
-
-    // 路由规则
-    public $patterns = [
-        ':any' => '[^/]+',
-        ':num' => '[0-9]+',
-        ':all' => '.*',
-        ':base64' => '[a-zA-Z0-9\/+=]+',
-    ];
-
-    // 请求的方法
-    private $methodAllow = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'];
-
-    // 定义支持的URL后缀
-    private $supportedSuffixes = ['.do', '.html'];
-
-    // 解析后的路由信息
-    private $parsedRoute = [];
-
-    // 中间件
-    private $middlewareGroups = [];
-
-    // 构建方法
     public function __construct($routes = null)
     {
-        // 载入路由表
         $this->loadRoutes($routes);
-        // 路由匹配
-        $this->match($routes); // 传递 $routes 参数
+        $this->match();
     }
+
     /**
-     * 载入路由表
-     * @throws \Exception
+     * 加载路由表
+     * @param array $routes
      */
     private function loadRoutes($routes = null)
     {
         if ($routes !== null) {
             $this->routes = $routes;
         } else {
-            $this->routes = Config::get('route');
+            $this->routes = Config::get('route'); // 从配置文件加载路由表
         }
+        $this->def = Config::get('def');
     }
 
     /**
      * 匹配路由
      */
-
-    private function match($routes = null)
+    private function match()
     {
-        // 如果传入了自定义路由规则，则加载这些规则
-        if ($routes !== null) {
-            $this->loadRoutes($routes);
-        }
-
-        $method = strtoupper($_SERVER['REQUEST_METHOD']);
-
-        // 获取请求的 URI，并确保不为空
-        $uri = isset($_SERVER['REQUEST_URI']) ? trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') : '';
-
-        // 如果 URI 为空，则将其设置为根目录路径
+        $method = strtoupper($_SERVER['REQUEST_METHOD']); // 获取请求方法
+        $uri = isset($_SERVER['REQUEST_URI']) ? trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') : ''; // 获取请求的URI路径
         if ($uri === '') {
-            $uri = '/';
+            $uri = '/'; // 如果URI为空，则设置为根路径
         }
-
-        // 存储匹配到的路由规则信息数组
-        $matchedRoutes = [];
-
-        // 移除URL后缀，如果有的话
-        $uri = $this->removeUrlSuffix($uri);
-
-        // 遍历路由分组
 
         foreach ($this->routes as $route => $routegroup) {
-            // 遍历路由配置
             foreach ($routegroup as $route => $handler) {
-                // 解析路由配置数据，并传递路由参数
-                $handler = $this->parseHandler($handler);
-                $routePath = $route; // 使用路由配置的键作为路径
-                $routeMethods = isset($handler['method']) ? explode('|', strtoupper($handler['method'])) : [];
-
-                // 检查请求方法是否符合要求
+                $handler = $this->parseHandler($handler); // 解析路由处理程序
+                $routeMethods = isset($handler['method']) ? explode('|', strtoupper($handler['method'])) : []; // 获取路由允许的请求方法
                 if (!empty($routeMethods) && !in_array($method, $routeMethods)) {
-                    continue;
+                    continue; // 如果请求方法不在允许的方法列表中，则继续下一次循环
                 }
-
-                // 构建路由正则表达式
-                $pattern = '#^' . preg_replace_callback('/:(\w+)/', function ($matches) use ($handler) {
-                    return isset($this->patterns[$matches[1]]) ? '(' . $this->patterns[$matches[1]] . ')' : '([^/]+)';
-                }, $routePath) . '$#';
-
-                // 尝试匹配当前路由规则
-                if (preg_match($pattern, $uri, $matches)) {
-                    // 匹配成功，执行对应的处理程序
-                    array_shift($matches); // 移除匹配的第一项（完整匹配）
-                    $params = $matches; // 提取路由参数
-
-                    // 如果是闭包函数,返回闭包函数和参数
-                    if ($handler['is_closure']) {
-                        $routeInfo = [
+                $pattern = $this->buildPattern($route); // 构建路由匹配正则表达式
+                if (preg_match($pattern, $uri, $matches)) { // 使用正则表达式匹配URI
+                    array_shift($matches);
+                    $params = $matches; // 获取匹配的参数
+                    if ($handler['is_closure']) { // 如果是闭包函数
+                        $this->parsedRoute = [
                             'is_closure' => true,
                             'closure' => $handler['closure'](...$params), // 执行闭包函数并传入参数
                         ];
-                        return; // 直接返回，不再处理其他路由
+                        return;
                     } else {
-                        // 构建并存储匹配的路由信息数据
-                        $routeInfo = [
+                        $this->parsedRoute = [
                             'is_closure' => false,
                             'namespace' => $handler['namespace'] ?? '',
                             'controller' => $handler['controller'] ?? '',
                             'action' => $handler['action'] ?? '',
                             'params' => $params,
                             'method' => $method,
-                            'middlewares' => $handler['middlewares'], // 添加中间件
+                            'middlewares' => $handler['middlewares'] ?? [], // 中间件
                         ];
-
-                        // 存储匹配到的路由规则信息数组
-                        $matchedRoutes = $routeInfo;
+                        return;
                     }
                 }
             }
         }
 
-        //如果没有匹配到返回404
-        if (empty($matchedRoutes)) {
-            $this->parsedRoute = [
-                'is_closure' => false,
-                'status' => 404];
+        // 如果没有匹配到路由，则尝试直接解析
+        if (empty($this->parsedRoute)) {
+            $this->parseDirectly($uri);
         } else {
-            // 有匹配到的路由信息数组
-            $this->parsedRoute = $matchedRoutes;
+            $this->parsedRoute = ['is_closure' => false, 'status' => 404]; // 如果没有匹配到路由，则返回404状态
         }
-        return;
     }
 
     /**
-     * 解析路由
+     * 解析路由处理程序 无路由表
      * @param $handler
      * @return array
-     * @throws \Exception
+     */
+    private function parseDirectly($uri)
+    {
+        // 移除URL后缀（如果有的话）
+        $uri = $this->removeUrlSuffix($uri);
+
+        // 使用'/'分割URI
+        $segments = explode('/', $uri);
+
+        // 约定前三个段为group, controller和action
+        $group = isset($segments[0]) && $segments[0] ? ucfirst($segments[0]) : 'DefaultGroup';
+        $controller = isset($segments[1]) && $segments[1] ? ucfirst($segments[1]) : 'Home';
+        $action = $segments[2] ?? 'index';
+
+        // 解析键值对参数
+        $params = [];
+        for ($i = 3; $i < count($segments); $i += 2) {
+            if (isset($segments[$i + 1])) {
+                $params[$segments[$i]] = $segments[$i + 1];
+            }
+        }
+
+        // 填充解析后的路由信息
+        $this->parsedRoute = [
+            'is_closure' => false,
+            'group' => $group,
+            'controller' => $controller,
+            'action' => $action,
+            'params' => $params,
+            'method' => $_SERVER['REQUEST_METHOD'],
+            // 根据需要添加中间件和其他信息
+        ];
+    }
+
+    /**
+     * 解析路由处理程序
+     * @param array $handler 路由处理程序
+     * @return array 解析后的路由处理程序
      */
     private function parseHandler($handler)
     {
         if (is_callable($handler[0])) {
-            // 如果是闭包函数
-            return [
-                'is_closure' => true,
-                'closure' => $handler[0],
-            ];
+            return ['is_closure' => true, 'closure' => $handler[0]]; // 如果是闭包函数，则返回闭包函数
         } else {
-            // 解析控制器、动作和命名空间
             list($method, $class) = explode('@', $handler[2]);
             $namespace = $handler[1];
-
-            // 添加检查中间件是否存在的条件
-            $middlewares = isset($handler['middlewares']) ? $handler['middlewares'] : [];
-
+            $middlewares = $handler['middlewares'] ?? []; // 中间件
             return [
                 'is_closure' => false,
                 'namespace' => $namespace,
                 'controller' => $class,
                 'action' => $method,
-                'path' => isset($handler[0]) ? $handler[0] : '', // 修正此处的索引
-                'method' => isset($handler[3]) ? $handler[3] : 'GET',
-                'params' => isset($handler[4]) ? $handler[4] : [],
-                'middlewares' => $middlewares, // 添加中间件
+                'path' => $handler[0] ?? '', // 路径
+                'method' => $handler[3] ?? 'GET',
+                'params' => $handler[4] ?? [], // 参数
+                'middlewares' => $middlewares,
             ];
         }
     }
 
     /**
+     * 构建路由正则表达式
+     * @param $route
+     * @return string
+     */
+    private function buildPattern($route)
+    {
+        return '#^' . preg_replace_callback('/:(\w+)/', function ($matches) { // 构建路由正则表达式
+            return isset($this->patterns[$matches[1]]) ? '(' . $this->patterns[$matches[1]] . ')' : '([^/]+)';
+        }, $route) . '$#';
+    }
+
+    /**
      * 移除URL后缀
-     *
-     * @param string $uri
+     * @param $uri
      * @return string
      */
     private function removeUrlSuffix($uri)
     {
-        // 检查并移除支持的后缀
         foreach ($this->supportedSuffixes as $suffix) {
             if (substr($uri, -strlen($suffix)) === $suffix) {
                 $uri = substr($uri, 0, -strlen($suffix));
-                break; // 找到一个后缀就退出循环
+                break;
             }
         }
         return $uri;
     }
 
-    /**
-     * 获取解析后的路由信息
-     *
-     * @return array 包含解析后的路由信息的数组
-     */
     public function getRouteInfo()
     {
         return $this->parsedRoute;

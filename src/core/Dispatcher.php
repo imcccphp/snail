@@ -32,8 +32,10 @@ class Dispatcher
         // If it's a closure, execute the closure and exit
         if ($this->routes['is_closure']) {
             $closure = $this->routes['closure'];
-            $closure(); // Execute the closure
-            exit(); // Exit after executing the closure
+            if (is_callable($closure)) {
+                $closure(); // Execute the closure
+                exit(); // Exit after executing the closure
+            }
         } else if (in_array('404', $this->routes)) {
             header('HTTP/1.1 404 Not Found');
             exit('404 Not Found');
@@ -42,11 +44,16 @@ class Dispatcher
             $this->executeMiddlewares(function () {
                 $this->executeRouteHandler();
             });
+            exit(); // Exit after executing the route handler
         }
     }
 
     protected function executeMiddlewares($finalHandler)
     {
+        if (empty($this->middlewares)) {
+            $finalHandler();
+            return;
+        }
         // 构建中间件执行链
         $next = $finalHandler;
         foreach (array_reverse($this->middlewares) as $middleware) {
