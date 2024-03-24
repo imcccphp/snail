@@ -144,6 +144,9 @@ class Router
             $params = array_slice($segments, 3);
         }
 
+        // 可以根据需要调整这里的逻辑以适配实际的配置结构
+        $middlewares = $config['middlewares'] ?? [];
+
         // 填充解析后的路由信息
         $this->parsedRoute = [
             'is_closure' => false,

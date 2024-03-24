@@ -7,6 +7,7 @@ return [
         'namespace' => 'app\controller',
         'controller' => 'Index',
         'action' => 'index',
+        'middlewares' => [],
     ],
     //分组设置
     'group' => [
@@ -14,16 +15,19 @@ return [
             'namespace' => 'web\controller',
             'controller' => 'Index',
             'action' => 'index',
+            'middlewares' => [],
         ],
         'api' => [
             'namespace' => 'api\controller',
             'controller' => 'Index',
             'action' => 'index',
+            'middlewares' => [],
         ],
         'admin' => [
             'namespace' => 'admin\controller',
             'controller' => 'Index',
             'action' => 'index',
+            'middlewares' => [],
         ],
     ],
 
