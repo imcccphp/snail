@@ -29,6 +29,13 @@ class Dispatcher
 
     protected function handleRequest()
     {
+        if (!empty($parsedRoute['is_static'])) {
+            // 这是一个静态文件请求，直接返回文件内容
+            header('Content-Type: ' . mime_content_type($parsedRoute['file_path']));
+            readfile($parsedRoute['file_path']);
+            exit;
+        }
+
         // If it's a closure, execute the closure and exit
         if ($this->routes['is_closure']) {
             $closure = $this->routes['closure'];
