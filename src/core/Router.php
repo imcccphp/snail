@@ -78,10 +78,8 @@ class Router
             }
         }
 
-        if (empty($this->parsedRoute)) {
-            // 如果没有找到匹配的路由，则尝试检查是否存在对应的真实文件
-            $this->checkForStaticFile($this->getUri());
-        }
+        // 如果没有匹配到路由，尝试直接解析URI
+        $this->parseDirectly($uri);
 
     }
 
@@ -100,9 +98,7 @@ class Router
             ];
         } else {
             // 如果既没有找到匹配的路由，也没有找到静态文件，则视为404
-            // $this->parsedRoute = ['is_closure' => false, 'status' => 404];
-            // 如果没有匹配到路由，尝试直接解析URI
-            $this->parseDirectly($uri);
+            $this->parsedRoute = ['is_closure' => false, 'status' => 404];
         }
     }
 
@@ -122,6 +118,9 @@ class Router
      */
     private function parseDirectly($uri)
     {
+
+        // 如果没有找到匹配的路由，则尝试检查是否存在对应的真实文件
+        $this->checkForStaticFile($this->getUri());
 
         // 使用'/'分割URI
         $segments = explode('/', $uri);
