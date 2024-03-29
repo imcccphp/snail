@@ -1,121 +1,157 @@
 <?php
 namespace Imccc\Snail\Mvc;
 
+use Imccc\Snail\Core\Config;
 use Imccc\Snail\Core\Container;
 use Imccc\Snail\Services\LoggerService;
 use Imccc\Snail\Services\MailService;
+use RuntimeException;
 
 class Controller
 {
-    protected $routes;
+    protected $config; // 配置信息
+    protected $routes; // 用于存储路由信息
+    protected $container; // 服务容器，用于依赖注入
 
-    protected $container;
-
+    /**
+     * 构造函数
+     *
+     * @param array $routes 路由数组
+     */
     public function __construct($routes)
     {
         $this->routes = $routes;
-        $this->container();
+        $this->initializeContainer();
     }
 
     /**
-     * 注册容器
+     * 初始化服务容器并注册服务
      */
-    public function container()
+    protected function initializeContainer()
     {
-        $this->container = new Container();
-
-        // 注册邮件服务到容器中
-        $mailService = $this->container->bind('MailService', function () {
-            return new MailService();
+        $this->container = Container::getInstance();
+        // 注册配置服务
+        $this->container->bind('ConfigService', function () {
+            return new ConfigService();
         });
 
-        // 注册日志服务到容器中
-        $logService = $this->container->bind('LoggerService', function () {
-            return new LoggerService();
-        });
-    }
+        $config = $container->resolve('ConfigService');
 
-    /**
-     * 读取参数
-     *
-     * @param string $ps 参数键名（使用点分隔表示嵌套关系）
-     * @return mixed 如果提供了参数，则返回对应的值，否则返回整个 $this->routes 数组
-     */
-    public function input(string $ps = ''): mixed
-    {
-        $alldata = $this->routes;
+        $this->config = $config->get('snail.on');
 
-        // 检查是否提供了参数
-        if (empty($ps) || !isset($ps)) {
-            return $alldata;
-        } else {
-            $pm = explode('.', $ps);
-            foreach ($pm as $val) {
-                // 逐级深入数组
-                if (isset($alldata[$val])) {
-                    return $alldata[$val];
-                }
-            }
+        // 注册日志服务
+        if ($this->config['log']) {
+            $this->container->bind('LoggerService', function () {
+                return new LoggerService();
+            });
+        }
+
+        // 注册邮件服务
+        if ($this->config['mail']) {
+            $this->container->bind('MailService', function () {
+                return new MailService();
+            });
+        }
+
+        // 注册缓存服务
+        if ($this->config['cache']) {
+            $this->container->bind('CacheService', function () {
+                return new CacheService();
+            });
+        }
+
+        // 注册sql服务
+        if ($this->config['sql']) {
+            $this->container->bind('SqlService', function () {
+                return new SqlService();
+            });
         }
     }
 
     /**
-     * 获取 POST 请求中的数据，并进行验证
+     * 根据点分隔的键名读取请求参数
      *
-     * @param array $rules 验证规则，格式为 ['字段名' => '规则']
-     * @return array 包含验证通过的 POST 数据的关联数组，如果验证失败返回空数组
-     * @throws RuntimeException 如果规则中指定的字段不存在
+     * @param string $ps 点分隔的参数键名
+     * @return mixed 参数值或者null
      */
-    public function getPost()
+    public function input(string $ps = ''): mixed
     {
-        // 检查请求方法是否为 POST
+        if (empty($ps)) {
+            return $this->routes;
+        }
+
+        $keys = explode('.', $ps);
+        $value = $this->routes;
+
+        // 按点分隔的键名逐层查找
+        foreach ($keys as $key) {
+            if (isset($value[$key])) {
+                $value = $value[$key];
+            } else {
+                return null; // 没找到指定的键名时返回null
+            }
+        }
+
+        return $value;
+    }
+
+    /**
+     * 获取POST请求体中的数据
+     *
+     * 根据Content-Type处理不同格式的请求体
+     *
+     * @return mixed 解析后的数据
+     * @throws RuntimeException 解析错误时抛出异常
+     */
+    public function getPost(): mixed
+    {
+        // 非POST请求返回空数组
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             return [];
         }
 
-        // 获取 POST 数据
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
         $rawData = file_get_contents('php://input');
-        if (empty($rawData)) {
-            return [];
-        }
 
-        // 尝试解析 JSON 数据
-        $jsonData = json_decode($rawData, true);
-        if ($jsonData !== null && json_last_error() === JSON_ERROR_NONE) {
-            return $jsonData;
-        }
+        switch (true) {
+            case strpos($contentType, 'application/json') !== false:
+                $data = json_decode($rawData, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new RuntimeException('JSON 解析错误');
+                }
+                return $data;
 
-        // 尝试解析 URL 编码数据
-        parse_str($rawData, $parsedData);
-        if (!empty($parsedData)) {
-            return $parsedData;
-        }
+            case strpos($contentType, 'application/x-www-form-urlencoded') !== false:
+                parse_str($rawData, $data);
+                return $data;
 
-        // 尝试解析 XML 数据
-        $xmlData = @simplexml_load_string($rawData);
-        if ($xmlData !== false) {
-            return $xmlData;
-        }
+            case strpos($contentType, 'application/xml') !== false:
+                $data = simplexml_load_string($rawData);
+                if ($data === false) {
+                    throw new RuntimeException('XML 解析错误');
+                }
+                return (array) $data;
 
-        // 默认情况下，返回原始数据
-        return $rawData;
+            default:
+                return []; // 不支持的格式或无数据时返回空数组
+        }
     }
 
     /**
-     * 获取所有 HTTP 头信息
+     * 获取所有HTTP请求头信息
      *
-     * @return array 包含所有 HTTP 头信息的数组
-     * @throws RuntimeException 如果获取失败
+     * @return array 包含所有请求头信息的关联数组
      */
-    public function getallheaders()
+    public function getallheaders(): array
     {
-        $headers = array();
+        $headers = [];
+        // 遍历$_SERVER数组，提取HTTP头信息
         foreach ($_SERVER as $name => $value) {
             if (substr($name, 0, 5) == 'HTTP_') {
-                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+                $headerName = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
+                $headers[$headerName] = $value;
             }
         }
         return $headers;
     }
-
 }

@@ -16,26 +16,26 @@
  * 销毁所有实例：使用 destroyAll 方法销毁所有服务的实例，示例：$container->destroyAll();
  *
  * // 创建容器实例
-$container = new Container();
+ * $container = new Container();
 
-// 示例 1: 绑定接口到具体实现类，并获取实例
-$container->bind('SomeInterface', 'SomeImplementation');
-$instance = $container->make('SomeInterface');
+ * // 示例 1: 绑定接口到具体实现类，并获取实例
+ * $container->bind('SomeInterface', 'SomeImplementation');
+ * $instance = $container->make('SomeInterface');
 
-// 示例 2: 绑定为单例并获取共享实例
-$container->bind('AnotherInterface', 'AnotherImplementation', true);
-$sharedInstance = $container->make('AnotherInterface');
+ * // 示例 2: 绑定为单例并获取共享实例
+ * $container->bind('AnotherInterface', 'AnotherImplementation', true);
+ * $sharedInstance = $container->make('AnotherInterface');
 
-// 示例 3: 链式调用
-$container->bind('ThirdInterface')->for('ThirdInterface')->bind('ThirdImplementation');
-$thirdInstance = $container->make('ThirdInterface');
+ * // 示例 3: 链式调用
+ * $container->bind('ThirdInterface')->for('ThirdInterface')->bind('ThirdImplementation');
+ * $thirdInstance = $container->make('ThirdInterface');
 
-// 示例 4: 验证链式调用的调用顺序
-try {
-$container->bind('FourthInterface')->for('FifthInterface');
-} catch (Exception $e) {
-echo $e->getMessage() . PHP_EOL; // 输出: The last bound service is not 'FifthInterface'.
-}
+ * // 示例 4: 验证链式调用的调用顺序
+ * try {
+ * $container->bind('FourthInterface')->for('FifthInterface');
+ * } catch (Exception $e) {
+ * echo $e->getMessage() . PHP_EOL; // 输出: The last bound service is not 'FifthInterface'.
+ * }
  */
 
 namespace Imccc\Snail\Core;
@@ -46,9 +46,20 @@ use ReflectionClass;
 
 class Container
 {
+    private static $instance;
+
     protected $bindings = []; // 绑定列表
     protected $aliases = []; // 别名列表
     protected $lastBound = ''; // 最后绑定的接口或抽象类
+
+    // 获取容器实例的静态方法
+    public static function getInstance()
+    {
+        if (!self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
 
     /**
      * 绑定接口或抽象类到具体实现类

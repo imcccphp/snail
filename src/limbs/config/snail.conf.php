@@ -1,26 +1,13 @@
 <?php
 
 return [
-    'about' => [
-        'name' => 'Snail',
-        'version' => '1.0.0',
-        'author' => 'sam',
-        'email' => 'sam@imccc.cc',
-        'copyright' => 'Copyright (c) 2024 Imccc',
-        'license' => 'Apache License 2.0',
-        'description' => 'Snail is a simple PHP framework for building web applications.',
+    'on' => [
+        'debug' => true, // 开启调试模式
+        'log' => true, // 开启日志记录
+        'mail' => true, // 开启邮件发送
+        'cache' => true, // 开启缓存
+        'session' => true, // 开启Session
+        'csrf' => true, // 开启CSRF保护
+        'auth' => true, // 开启权限验证
     ],
-    'config' => [
-        'debug' => true,
-        'error_reporting' => E_ALL,
-        'timezone' => 'Asia/Shanghai',
-        'charset' => 'utf-8',
-        'runtime' => 'runtime', // runtime 目录
-    ],
-    'driver' => [
-        'session' => 'file',
-        'cache' => 'file',
-        'log' => 'file',
-    ],
-
 ];

@@ -6,6 +6,7 @@ namespace Imccc\Snail;
 defined('CONFIG_PATH') || define('CONFIG_PATH', dirname(__DIR__) . '/src/limbs/config');
 defined('CFG_EXT') || define('CFG_EXT', '.conf.php');
 
+use Imccc\Snail\Core\Container;
 use Imccc\Snail\Core\Dispatcher;
 use Imccc\Snail\Core\HandlerException;
 use Imccc\Snail\Core\Router;
@@ -19,6 +20,7 @@ class Snail
 
     public function __construct()
     {
+        $this->initializeContainer();
         $this->run();
     }
 
@@ -34,6 +36,29 @@ class Snail
         // print_r($d->getRouteInfo());
         $dispatch = new Dispatcher($this->router);
         $dispatch->dispatch();
+    }
+
+    /**
+     * 初始化服务容器并注册服务
+     */
+    protected function initializeContainer()
+    {
+        $this->container = Container::getInstance();
+        // 注册配置服务
+        $this->container->bind('ConfigService', function () {
+            return new ConfigService();
+        });
+
+        $config = $container->resolve('ConfigService');
+
+        $this->config = $config->get('snail.on');
+
+        // 注册日志服务
+        if ($this->config['log']) {
+            $this->container->bind('LoggerService', function () {
+                return new LoggerService();
+            });
+        }
     }
 
     /**
