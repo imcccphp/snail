@@ -24,7 +24,7 @@ class MailService
     {
         $this->container = $container;
         $config = $this->container->resolve('ConfigService')->get('mail');
-        $logger = $this->container->resolve('LoggerService');
+        $this->logger = $this->container->resolve('LoggerService');
         $this->host = $config['host'];
         $this->port = $config['port'];
         $this->username = $config['username'];
