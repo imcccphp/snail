@@ -39,11 +39,11 @@ class MailService
     {
         $this->socket = fsockopen($this->host, $this->port, $errno, $errstr, $this->connectionTimeout);
         if ($this->log) {
-            $this->logger->log('Connecting to SMTP host: ' . $this->host . ':' . $this->port, $logfile);
+            $this->logger->log('Connecting to SMTP host: ' . $this->host . ':' . $this->port, $this->logfile);
         }
         if (!$this->socket) {
             if ($this->debug) {
-                $this->logger->log('Could not connect to SMTP host: ' . $errstr . ' (' . $errno . ')', $logfile);
+                $this->logger->log('Could not connect to SMTP host: ' . $errstr . ' (' . $errno . ')', $this->logfile);
             }
             throw new Exception("Could not connect to SMTP host: $errstr ($errno)");
         }
