@@ -15,6 +15,7 @@ class MailService
     private $connectionTimeout;
     private $responseTimeout;
     private $debug;
+    private $log;
     private $logfile = '_MAIL_';
     protected $container;
     protected $logger;
@@ -22,7 +23,7 @@ class MailService
     public function __construct(Container $container)
     {
         $this->container = $container;
-        $config = $this->container->resolve('ConfigService')->get('smtp');
+        $config = $this->container->resolve('ConfigService')->get('mail');
         $logger = $this->container->resolve('LoggerService');
         $this->host = $config['host'];
         $this->port = $config['port'];
@@ -31,11 +32,15 @@ class MailService
         $this->connectionTimeout = $config['connectionTimeout'];
         $this->responseTimeout = $config['responseTimeout'];
         $this->debug = $config['debug'];
+        $this->log = $config['log'];
     }
 
     private function connect()
     {
         $this->socket = fsockopen($this->host, $this->port, $errno, $errstr, $this->connectionTimeout);
+        if ($this->log) {
+            $this->logger->log('Connecting to SMTP host: ' . $this->host . ':' . $this->port, $logfile);
+        }
         if (!$this->socket) {
             if ($this->debug) {
                 $this->logger->log('Could not connect to SMTP host: ' . $errstr . ' (' . $errno . ')', $logfile);
