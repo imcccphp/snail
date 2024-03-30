@@ -1,13 +1,17 @@
 <?php
 
 return [
-    'smtp' => 'mail.imccc.cc',
+    'host' => 'mail.imccc.cc',
     'port' => 25,
     'username' => 'sam@imccc.cc',
     'password' => 'Bcc@1205',
-    'from' => 'admin@imccc.cc',
-    'from_name' => 'imccc',
-    // 'reply_to' => 'imccc@imccc.cc',
-    // 'cc' => 'imccc@imccc.cc',
-    // 'bcc' => 'imccc@imccc.cc',
+    'connectionTimeout' => 30,
+    'responseTimeout' => 30,
+    'debug' => true,
+    'log' => true,
+    'log_path' => dirname($_SERVER['DOCUMENT_ROOT']) . '/runtime/mail', // 日志文件路径,
+    'log_level' => 'debug',
+    'log_format' => '[%datetime%] %channel%.%level_name%: %message% %context% %extra%',
+    'log_date_format' => 'Y-m-d H:i:s',
+    'log_timezone' => 'Asia/Shanghai',
 ];

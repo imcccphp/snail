@@ -38,7 +38,7 @@ class Snail
         $d = new Router();
 
         $this->router = $d->getRouteInfo();
-        $dispatch = new Dispatcher($this->router);
+        $dispatch = new Dispatcher($this->container, $this->router);
         $dispatch->dispatch();
     }
 
