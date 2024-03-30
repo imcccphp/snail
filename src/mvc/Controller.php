@@ -1,21 +1,24 @@
 <?php
 namespace Imccc\Snail\Mvc;
 
+use Imccc\Snail\Core\Container;
 use RuntimeException;
 
 class Controller
 {
     protected $config; // 配置信息
     protected $routes; // 用于存储路由信息
+    protected $container;
 
     /**
      * 构造函数
      *
      * @param array $routes 路由数组
      */
-    public function __construct($routes)
+    public function __construct(Container $container, $routes)
     {
         $this->routes = $routes;
+        $this->container = $container;
     }
 
     /**
