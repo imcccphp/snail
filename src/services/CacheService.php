@@ -14,7 +14,7 @@ class CacheService
     public function __construct(Container $container)
     {
         $this->container = $container;
-        $this->config = Config::get('cache');
+        $this->config = $this->container->resolve('ConfigService')->get('cache');
     }
 
     public function get($key)
@@ -41,22 +41,22 @@ class CacheService
             switch ($driver) {
                 case 'file':
                     $this->container->bind($driverKey, function () {
-                        return new FileCacheDriver(Config::get('cache.file'));
+                        return new FileCacheDriver($container);
                     });
                     break;
                 case 'redis':
                     $this->container->bind($driverKey, function () {
-                        return new RedisCacheDriver(Config::get('cache.redis'));
+                        return new RedisCacheDriver($container);
                     });
                     break;
                 case 'memcached':
                     $this->container->bind($driverKey, function () {
-                        return new MemcachedCacheDriver(Config::get('cache.memcached'));
+                        return new MemcachedCacheDriver($container);
                     });
                     break;
                 case 'mongo':
                     $this->container->bind($driverKey, function () {
-                        return new MongoCacheDriver(Config::get('cache.mongo'));
+                        return new MongoCacheDriver($container);
                     });
                     break;
                 default:

@@ -1,5 +1,15 @@
 <?php
-
+/**
+ * 日志服务
+ *
+ * @package Imccc\Snail
+ * @version 0.0.1
+ * @author Imccc
+ * @copyright Copyright (c) 2024 Imccc.
+ * @license Apache-2.0
+ * @link https://github.com/imcccphp/Snail
+ * @lastModify 2024-03-30
+ */
 namespace Imccc\Snail\Services;
 
 use Imccc\Snail\Core\Config;
@@ -15,7 +25,7 @@ class LoggerService
     {
         $this->container = $container;
         // 解析配置服务并获取日志配置信息
-        $this->config = $this->container->resolve('config')->get('logger');
+        $this->config = $this->container->resolve('ConfigService')->get('logger');
         // 日志文件路径
         $this->logFilePath = $this->config['log_file_path'];
 
@@ -28,7 +38,7 @@ class LoggerService
     /**
      * 根据配置记录日志
      */
-    public function log($message, $filename = '_def_')
+    public function log($message, $filename = '_DEF_')
     {
         // 根据日志类型选择相应的记录方式
         switch ($this->config['log_type']) {

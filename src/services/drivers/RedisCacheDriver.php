@@ -2,21 +2,27 @@
 
 namespace Imccc\Snail\Services\Drivers;
 
+use Imccc\Snail\Core\Container;
 use Redis;
 
 class RedisCacheDriver
 {
     protected $redis;
+    protected $config;
+    protected $container;
 
-    public function __construct($config)
+    public function __construct(Container $container)
     {
+        $this->container = $container;
+        $this->config = $this->container->resolve('ConfigService')->get('cache.driverConfig.redis');
         $this->redis = new Redis();
-        $this->redis->connect($config['host'], $config['port']);
-        if (!empty($config['password'])) {
-            $this->redis->auth($config['password']);
+        $this->redis->connect($this->config['host'], $this->config['port']);
+
+        if (!empty($this->config['password'])) {
+            $this->redis->auth($this->config['password']);
         }
-        if (!empty($config['database'])) {
-            $this->redis->select($config['database']);
+        if (!empty($this->config['database'])) {
+            $this->redis->select($this->config['database']);
         }
     }
 
@@ -32,6 +38,11 @@ class RedisCacheDriver
         } else {
             return $this->redis->set($key, $value);
         }
+    }
+
+    public function delete($key)
+    {
+        return $this->redis->del($key);
     }
 
     public function clear()

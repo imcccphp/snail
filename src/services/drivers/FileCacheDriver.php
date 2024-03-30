@@ -2,13 +2,17 @@
 
 namespace Imccc\Snail\Services\Drivers;
 
+use Imccc\Snail\Core\Container;
+
 class FileCacheDriver
 {
     protected $cachePath;
+    protected $config;
 
-    public function __construct($config)
+    public function __construct(Container $container)
     {
-        $this->cachePath = $config['path'];
+        $this->config = $this->container->resolve('ConfigService')->get('cache');
+        $this->cachePath = $this->config['path'];
         if (!is_dir($this->cachePath)) {
             mkdir($this->cachePath, 0777, true);
         }
@@ -37,6 +41,16 @@ class FileCacheDriver
         ];
         $content = serialize($data);
         return file_put_contents($filePath, $content) !== false;
+    }
+
+    public function delete($key)
+    {
+        $filePath = $this->getCacheFilePath($key);
+        if (file_exists($filePath)) {
+            unlink($filePath);
+            return true;
+        }
+        return false;
     }
 
     public function clear()

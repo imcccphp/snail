@@ -4,7 +4,7 @@ return [
     'driver' => 'file',
     'driverConfig' => [
         'file' => [
-            'path' => __DIR__ . '/../logs',
+            'path' => dirname($_SERVER['DOCUMENT_ROOT']) . '/runtime/cache', // 日志文件路径,
             'level' => 'debug',
             'max_files' => 10,
             'max_file_size' => 1024 * 1024 * 10,
@@ -13,6 +13,7 @@ return [
             'host' => '127.0.0.1',
             'port' => 6379,
             'auth' => '',
+            'password' => '',
             'db' => 0,
         ],
         'memcached' => [
@@ -32,6 +33,7 @@ return [
             'host' => '127.0.0.1',
             'port' => 27017,
             'db' => 'test',
+            'collection' => 'cache',
             'username' => '',
             'password' => '',
             'options' => [],

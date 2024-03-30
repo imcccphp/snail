@@ -1,17 +1,12 @@
 <?php
 namespace Imccc\Snail\Mvc;
 
-use Imccc\Snail\Core\Config;
-use Imccc\Snail\Core\Container;
-use Imccc\Snail\Services\LoggerService;
-use Imccc\Snail\Services\MailService;
 use RuntimeException;
 
 class Controller
 {
     protected $config; // 配置信息
     protected $routes; // 用于存储路由信息
-    protected $container; // 服务容器，用于依赖注入
 
     /**
      * 构造函数
@@ -21,51 +16,6 @@ class Controller
     public function __construct($routes)
     {
         $this->routes = $routes;
-        $this->initializeContainer();
-    }
-
-    /**
-     * 初始化服务容器并注册服务
-     */
-    protected function initializeContainer()
-    {
-        $this->container = Container::getInstance();
-        // 注册配置服务
-        $this->container->bind('ConfigService', function () {
-            return new ConfigService();
-        });
-
-        $config = $container->resolve('ConfigService');
-
-        $this->config = $config->get('snail.on');
-
-        // 注册日志服务
-        if ($this->config['log']) {
-            $this->container->bind('LoggerService', function () {
-                return new LoggerService();
-            });
-        }
-
-        // 注册邮件服务
-        if ($this->config['mail']) {
-            $this->container->bind('MailService', function () {
-                return new MailService();
-            });
-        }
-
-        // 注册缓存服务
-        if ($this->config['cache']) {
-            $this->container->bind('CacheService', function () {
-                return new CacheService();
-            });
-        }
-
-        // 注册sql服务
-        if ($this->config['sql']) {
-            $this->container->bind('SqlService', function () {
-                return new SqlService();
-            });
-        }
     }
 
     /**

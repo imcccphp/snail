@@ -1,4 +1,12 @@
 <?php
+/**
+ * 文件服务
+ *
+ * @package Imccc\Snail\Services
+ * @version 0.0.1
+ * @author Imccc
+ * @copyright Copyright (c) 2024 Imccc.
+ */
 
 namespace Imccc\Snail\Services;
 

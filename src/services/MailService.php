@@ -1,14 +1,22 @@
 <?php
-namespace Imccc\Snail\Services;
 
-use Imccc\Snail\Core\Config;
+namespace Imccc\Snail\Services;
 
 class MailService
 {
+    // private $config; // 日志配置
+    // private $container; // 容器
+
+    // public function __construct(Container $container)
+    // {
+    //     $this->container = $container;
+    //     // 解析配置服务并获取日志配置信息
+    //     $this->config = $this->container->resolve('ConfigService')->get('mail');
+
+    // }
+
     public function sendMail($to, $subject, $body, $fromEmail = null, $fromName = null, $replyTo = null, $cc = null, $bcc = null, $attachments = array())
     {
-        $cfg = Config::get('mail');
-        ini_set('SMTP', $cfg['smtp']);
 
         // 构建邮件头
         $headers = "MIME-Version: 1.0\r\n";

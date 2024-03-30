@@ -10,6 +10,7 @@ use Imccc\Snail\Core\Container;
 use Imccc\Snail\Core\Dispatcher;
 use Imccc\Snail\Core\HandlerException;
 use Imccc\Snail\Core\Router;
+use Imccc\Snail\Services\ConfigService;
 
 class Snail
 {
@@ -17,6 +18,9 @@ class Snail
     const SNAIL_VERSION = '0.0.1';
 
     protected $router;
+    protected $config;
+    protected $logger;
+    protected $container;
 
     public function __construct()
     {
@@ -33,7 +37,6 @@ class Snail
         $d = new Router();
 
         $this->router = $d->getRouteInfo();
-        // print_r($d->getRouteInfo());
         $dispatch = new Dispatcher($this->router);
         $dispatch->dispatch();
     }
@@ -46,19 +49,22 @@ class Snail
         $this->container = Container::getInstance();
         // 注册配置服务
         $this->container->bind('ConfigService', function () {
-            return new ConfigService();
+            return new ConfigService($this->container);
         });
 
-        $config = $container->resolve('ConfigService');
+        $config = $this->container->resolve('ConfigService');
 
         $this->config = $config->get('snail.on');
 
         // 注册日志服务
         if ($this->config['log']) {
             $this->container->bind('LoggerService', function () {
-                return new LoggerService();
+                return new LoggerService($this->container);
             });
         }
+
+        $this->logger = $this->container->resolve('LoggerService');
+
     }
 
     /**
@@ -66,6 +72,7 @@ class Snail
      */
     public function __destruct()
     {
+        $this->logger->log('Snail Run Success');
         if (Defined('START_TIME')) {
             echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS";
         }
