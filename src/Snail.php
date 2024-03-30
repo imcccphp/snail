@@ -11,6 +11,7 @@ use Imccc\Snail\Core\Dispatcher;
 use Imccc\Snail\Core\HandlerException;
 use Imccc\Snail\Core\Router;
 use Imccc\Snail\Services\ConfigService;
+use Imccc\Snail\Services\LoggerService;
 
 class Snail
 {
