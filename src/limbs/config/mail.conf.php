@@ -1,8 +1,12 @@
 <?php
 
 return [
+
     'host' => 'mail.imccc.cc',
-    'port' => 25,
+    'port' => 455,
+    'tls' => true,
+    'ssl' => false,
+    'auth' => true,
     'username' => 'sam@imccc.cc',
     'password' => 'Bcc@1205',
     'connectionTimeout' => 30,

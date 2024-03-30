@@ -19,25 +19,30 @@ class MailService
     private $logfile = '_MAIL_';
     protected $container;
     protected $logger;
+    protected $config;
 
     public function __construct(Container $container)
     {
         $this->container = $container;
-        $config = $this->container->resolve('ConfigService')->get('mail');
+        $this->config = $this->container->resolve('ConfigService')->get('mail');
         $this->logger = $this->container->resolve('LoggerService');
-        $this->host = $config['host'];
-        $this->port = $config['port'];
-        $this->username = $config['username'];
-        $this->password = $config['password'];
-        $this->connectionTimeout = $config['connectionTimeout'];
-        $this->responseTimeout = $config['responseTimeout'];
-        $this->debug = $config['debug'];
-        $this->log = $config['log'];
+        $this->host = $this->config['host'];
+        $this->port = $this->config['port'];
+        $this->username = $this->config['username'];
+        $this->password = $this->config['password'];
+        $this->connectionTimeout = $this->config['connectionTimeout'];
+        $this->responseTimeout = $this->config['responseTimeout'];
+        $this->debug = $this->config['debug'];
+        $this->log = $this->config['log'];
     }
 
     private function connect()
     {
-        $this->socket = fsockopen($this->host, $this->port, $errno, $errstr, $this->connectionTimeout);
+        if ($this->config['tls']) {
+            $this->socket = fsockopen("tls://" . $this->host, $this->port, $errno, $errstr, $this->connectionTimeout);
+        } else {
+            $this->socket = fsockopen($this->host, $this->port, $errno, $errstr, $this->connectionTimeout);
+        }
         if ($this->log) {
             $this->logger->log('Connecting to SMTP host: ' . $this->host . ':' . $this->port, $this->logfile);
         }
@@ -88,6 +93,10 @@ class MailService
         $this->sendCommand("DATA");
         $this->sendCommand("Subject: $subject\r\nTo: <$to>\r\nFrom: <$from>\r\n\r\n$body\r\n.");
         $this->sendCommand("QUIT");
+        if ($this->log) {
+            $this->logger->log("Mail sent successfully.\r\n From: $from\r\n To: $to\r\n Subject: $subject\r\n Body: $body", $this->logfile);
+        }
+
         fclose($this->socket);
     }
 }
