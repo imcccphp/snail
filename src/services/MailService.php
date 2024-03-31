@@ -139,11 +139,11 @@ class MailService
      * @param string $to 收件人地址
      * @param string $subject 邮件主题
      * @param string $body 邮件正文
-     * @param array $cc 抄送地址
-     * @param array $bcc 密送地址
+     * @param array|string|null $cc 抄送地址
+     * @param array|string|null $bcc 密送地址
      * @return bool 发送成功返回true，失败返回false
      */
-    public function sendMail($from, $to, $subject, $body, $cc = [], $bcc = [])
+    public function sendMail($from, $to, $subject, $body, $cc = null, $bcc = null)
     {
         // 建立与SMTP服务器的连接
         $this->connect();
@@ -157,13 +157,27 @@ class MailService
         $this->sendCommand("RCPT TO: <$to>");
 
         // 添加抄送收件人
-        foreach ($cc as $ccRecipient) {
-            $this->sendCommand("RCPT TO: <$ccRecipient>");
+        if ($cc != null && is_array($cc)) {
+            foreach ($cc as $ccRecipient) {
+                $this->sendCommand("RCPT TO: <$ccRecipient>");
+            }
+        } else if ($cc != null && is_string($cc)) {
+            $cc = explode(',', $cc);
+            foreach ($cc as $ccRecipient) {
+                $this->sendCommand("RCPT TO: <$ccRecipient>");
+            }
         }
 
         // 添加密送收件人
-        foreach ($bcc as $bccRecipient) {
-            $this->sendCommand("RCPT TO: <$bccRecipient>");
+        if ($bcc != null && is_array($bcc)) {
+            foreach ($bcc as $bccRecipient) {
+                $this->sendCommand("RCPT TO: <$bccRecipient>");
+            }
+        } else if ($bcc != null && is_string($bcc)) {
+            $bcc = explode(',', $bcc);
+            foreach ($bcc as $bccRecipient) {
+                $this->sendCommand("RCPT TO: <$bccRecipient>");
+            }
         }
 
         // 开始邮件内容
