@@ -7,25 +7,53 @@ use Imccc\Snail\Core\Container;
 
 class MailService
 {
+    // SMTP服务器主机
     private $host;
+
+    // SMTP服务器端口
     private $port;
+
+    // SMTP用户名
     private $username;
+
+    // SMTP密码
     private $password;
+
+    // 用于与SMTP服务器通信的套接字
     private $socket;
+
+    // 连接超时时间
     private $connectionTimeout;
+
+    // 响应超时时间
     private $responseTimeout;
+
+    // 调试模式标志
     private $debug;
+
+    // 日志记录标志
     private $log;
+
+    // 日志文件名
     private $logfile = '_MAIL_';
+
+    // 依赖注入容器
     protected $container;
+
+    // 日志记录器实例
     protected $logger;
+
+    // 邮件服务配置数组
     protected $config;
 
     public function __construct(Container $container)
     {
         $this->container = $container;
+        // 获取邮件配置
         $this->config = $this->container->resolve('ConfigService')->get('mail');
+        // 获取日志记录器实例
         $this->logger = $this->container->resolve('LoggerService');
+        // 初始化属性
         $this->host = $this->config['host'];
         $this->port = $this->config['port'];
         $this->username = $this->config['username'];
@@ -36,41 +64,63 @@ class MailService
         $this->log = $this->config['log'];
     }
 
+    /**
+     * 连接SMTP服务器
+     */
     private function connect()
     {
+        // 根据是否使用TLS建立套接字连接
         if ($this->config['tls']) {
             $this->socket = fsockopen("tls://" . $this->host, $this->port, $errno, $errstr, $this->connectionTimeout);
         } else {
             $this->socket = fsockopen($this->host, $this->port, $errno, $errstr, $this->connectionTimeout);
         }
+        // 记录连接日志
         if ($this->log) {
             $this->logger->log('Connecting to SMTP host: ' . $this->host . ':' . $this->port, $this->logfile);
         }
+        // 检查连接是否成功
         if (!$this->socket) {
+            // 记录连接失败日志并抛出异常
             if ($this->debug) {
                 $this->logger->log('Could not connect to SMTP host: ' . $errstr . ' (' . $errno . ')', $this->logfile);
             }
             throw new Exception("Could not connect to SMTP host: $errstr ($errno)");
         }
-
+        // 设置响应超时时间
         stream_set_timeout($this->socket, $this->responseTimeout);
         $this->readResponse();
     }
 
+    /**
+     * 验证SMTP服务器的认证信息
+     */
     private function authenticate()
     {
+        // 发送EHLO命令
         $this->sendCommand("EHLO " . gethostname());
+        // 发送AUTH LOGIN命令
         $this->sendCommand("AUTH LOGIN");
+        // 发送用户名和密码进行Base64编码后的命令
         $this->sendCommand(base64_encode($this->username));
         $this->sendCommand(base64_encode($this->password));
     }
 
+    /**
+     * 发送SMTP命令
+     * @param string $command 命令内容
+     * @return string 响应内容
+     */
     private function sendCommand($command)
     {
         fputs($this->socket, $command . "\r\n");
         return $this->readResponse();
     }
 
+    /**
+     * 读取SMTP服务器的响应
+     * @return string 响应内容
+     */
     private function readResponse()
     {
         $response = "";
@@ -83,20 +133,69 @@ class MailService
         return $response;
     }
 
-    public function sendMail($from, $to, $subject, $body)
+    /**
+     * 发送邮件
+     * @param string $from 发件人地址
+     * @param string $to 收件人地址
+     * @param string $subject 邮件主题
+     * @param string $body 邮件正文
+     * @param array $cc 抄送地址
+     * @param array $bcc 密送地址
+     * @return bool 发送成功返回true，失败返回false
+     */
+    public function sendMail($from, $to, $subject, $body, $cc = [], $bcc = [])
     {
+        // 建立与SMTP服务器的连接
         $this->connect();
+        // 进行SMTP身份验证
         $this->authenticate();
 
+        // 发送邮件相关命令
         $this->sendCommand("MAIL FROM: <$from>");
+
+        // 添加主收件人
         $this->sendCommand("RCPT TO: <$to>");
-        $this->sendCommand("DATA");
-        $this->sendCommand("Subject: $subject\r\nTo: <$to>\r\nFrom: <$from>\r\n\r\n$body\r\n.");
-        $this->sendCommand("QUIT");
-        if ($this->log) {
-            $this->logger->log("Mail sent successfully.\r\n From: $from\r\n To: $to\r\n Subject: $subject\r\n Body: $body", $this->logfile);
+
+        // 添加抄送收件人
+        foreach ($cc as $ccRecipient) {
+            $this->sendCommand("RCPT TO: <$ccRecipient>");
         }
 
+        // 添加密送收件人
+        foreach ($bcc as $bccRecipient) {
+            $this->sendCommand("RCPT TO: <$bccRecipient>");
+        }
+
+        // 开始邮件内容
+        $this->sendCommand("DATA");
+
+        // 发送邮件头部
+        $this->sendCommand("Subject: $subject\r\nTo: <$to>");
+
+        // 添加抄送收件人到邮件头部
+        foreach ($cc as $ccRecipient) {
+            $this->sendCommand("Cc: <$ccRecipient>");
+        }
+
+        // 发送空行分隔头部和正文
+        $this->sendCommand("");
+
+        // 发送邮件正文
+        $this->sendCommand($body);
+
+        // 发送结束邮件内容的命令
+        $this->sendCommand(".");
+
+        // 发送QUIT命令结束SMTP会话
+        $this->sendCommand("QUIT");
+
+        // 记录邮件发送日志
+        if ($this->log) {
+            $this->logger->log("Mail sent successfully.\r\n From: $from\r\n To: $to\r\n CC: " . implode(", ", $cc) . "\r\n BCC: " . implode(", ", $bcc) . "\r\n Subject: $subject\r\n Body: $body", $this->logfile);
+        }
+
+        // 关闭套接字连接
         fclose($this->socket);
     }
+
 }

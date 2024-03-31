@@ -3,8 +3,8 @@
 return [
 
     'host' => 'mail.imccc.cc',
-    'port' => 455,
-    'tls' => true,
+    'port' => 25,
+    'tls' => false,
     'ssl' => false,
     'auth' => true,
     'username' => 'sam@imccc.cc',
