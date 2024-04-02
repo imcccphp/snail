@@ -132,11 +132,11 @@ class LoggerService
         $sqlService = $this->container->resolve('SqlService');
 
         // 准备插入语句
-        $sql = "INSERT INTO {$tableName} (log_time, message, type) VALUES (:log_time, :message, :type)";
+        $sql = "INSERT INTO {$tableName} (times, message, type) VALUES (:times, :message, :type)";
 
         // 准备参数数组
         $params = [
-            ':log_time' => date('Y-m-d H:i:s'),
+            ':times' => date('Y-m-d H:i:s'),
             ':message' => $message,
             ':type' => $type,
         ];

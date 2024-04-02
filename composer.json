@@ -3,7 +3,8 @@
     "description": "Snail Framework",
     "type": "library",
     "require": {
-        "php": ">=7.1.0"
+        "php": ">=7.1.0",
+        "twig/twig": "^3.8"
     },
     "license": "Apache-2.0",
     "autoload": {
