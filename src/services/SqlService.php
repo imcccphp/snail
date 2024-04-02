@@ -25,6 +25,7 @@ class SqlService
     private $logprefix = ['sql', 'sqlerr'];
     private $logconf;
     private $join = '';
+    private $prefix;
 
     /**
      * 构造函数
@@ -59,7 +60,7 @@ class SqlService
                 default:
                     throw new Exception("Unsupported database driver: $driver");
             }
-
+            $this->prefix = $dsnConfig['prefix'];
             $this->pdo = new PDO($dsn, $username, $password, $options);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -105,6 +106,7 @@ class SqlService
     public function select($table, $columns = ['*'], $condition = '', $params = [])
     {
         $columnsStr = implode(', ', $columns);
+        $table = $this->prefix . $table;
         $sql = "SELECT $columnsStr FROM $table";
 
         if (!empty($condition)) {
@@ -137,6 +139,7 @@ class SqlService
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
 
+        $table = $this->prefix . $table;
         $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
         $this->logger->log('Insert Sql: [' . $sql . ' Data: ' . json_encode($data) . ']', $this->logprefix[0]);
         try {
@@ -168,6 +171,7 @@ class SqlService
             $params[] = $value;
         }
 
+        $table = $this->prefix . $table;
         $sql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $condition";
         $this->logger->log('Update Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
@@ -192,6 +196,7 @@ class SqlService
      */
     public function delete($table, $condition, $params = [])
     {
+        $table = $this->prefix . $table;
         $sql = "DELETE FROM $table WHERE $condition";
         $this->logger->log('Delete Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {

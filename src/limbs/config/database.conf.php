@@ -4,12 +4,13 @@ return [
     'db' => 'mysql',
     'dsn' => [
         'mysql' => [
-            'host' => 'localhost',
-            'dbname' => 'test',
+            'host' => '127.0.0.1',
+            'dbname' => 'snail_local',
             'user' => 'root',
             'password' => 'root',
             'charset' => 'utf8',
             'port' => '3306',
+            'prefix' => 'snail_',
             'options' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -25,6 +26,7 @@ return [
             'password' => 'root',
             'charset' => 'utf8',
             'port' => '3306',
+            'prefix' => 'snail_',
             'options' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -40,6 +42,7 @@ return [
             'password' => 'root',
             'charset' => 'utf8',
             'port' => '3306',
+            'prefix' => 'snail_',
             'options' => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
