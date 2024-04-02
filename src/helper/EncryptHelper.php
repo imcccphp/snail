@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * 加密助手类
+ *
+ * @author  sam <sam@imccc.cc>
+ * @since   2024-03-31
+ * @version 1.0
+ */
 namespace Imccc\Snail\Helper;
 
 class EncryptHelper

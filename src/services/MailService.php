@@ -184,7 +184,7 @@ class MailService
         $this->sendCommand("DATA");
 
         // 发送邮件头部
-        $this->sendCommand("Subject: $subject\r\nTo: <$to>");
+        $this->sendCommand("Subject: $subject\r\nTo: <$to>\r\nFrom: <$from>");
 
         // 添加抄送收件人到邮件头部
         foreach ($cc as $ccRecipient) {

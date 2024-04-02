@@ -1,6 +1,13 @@
 <?php
 namespace Imccc\Snail\Helper;
 
+/**
+ * 字符串处理助手类
+ *
+ * @author  sam <sam@imccc.cc>
+ * @since   2024-03-31
+ * @version 1.0
+ */
 class StringHelper
 {
     /**
@@ -13,6 +20,16 @@ class StringHelper
         return preg_replace_callback('/_([a-z])/', function ($matches) {
             return strtoupper($matches[1]);
         }, $str);
+    }
+
+    /**
+     * 下划线命名法转驼峰命名法
+     * @param $str
+     * @return string
+     */
+    public static function underscore($str)
+    {
+        return strtolower(preg_replace('/([A-Z])/', '_', lcfirst($str)));
     }
 
     /**

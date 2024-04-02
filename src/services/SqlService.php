@@ -22,7 +22,7 @@ class SqlService
     private $container;
     protected $config;
     protected $logger;
-    private $logfile = '_SQL_';
+    private $logprefix = ['sql', 'sqlerr'];
     private $logconf;
     private $join = '';
 
@@ -34,18 +34,18 @@ class SqlService
     public function __construct(Container $container)
     {
         $this->container = $container;
-        $this->config = $this->container->resolve('ConfigService')->get('database');
         $this->logger = $this->container->resolve('LoggerService');
-        $this->logconf = $this->container->resolve('ConfigService')->get('logger');
-
-        $driver = $this->config['db'];
-        $dsnConfig = $this->config['dsn'][$driver];
-        $username = $dsnConfig['user'];
-        $password = $dsnConfig['password'];
-        $port = $dsnConfig['port'];
-        $options = $dsnConfig['options'];
+        $this->config = $this->container->resolve('ConfigService')->get('database');
+        $this->logconf = $this->container->resolve('ConfigService')->get('logger.on');
 
         try {
+            $driver = $this->config['db'];
+            $dsnConfig = $this->config['dsn'][$driver];
+            $username = $dsnConfig['user'];
+            $password = $dsnConfig['password'];
+            $port = $dsnConfig['port'];
+            $options = $dsnConfig['options'];
+
             switch ($driver) {
                 case 'mysql':
                     $dsn = "mysql:host={$dsnConfig['host']};dbname={$dsnConfig['dbname']};charset={$dsnConfig['charset']};port={$port}";
@@ -63,14 +63,9 @@ class SqlService
             $this->pdo = new PDO($dsn, $username, $password, $options);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-            if ($this->logconf['on']['sql']) {
-                $this->logger->log('PDO DSN: [' . $dsn . ']', $this->logfile);
-            }
+            $this->logger->log('PDO DSN: [' . $dsn . ']', $this->logprefix[0]);
         } catch (PDOException $e) {
-            if ($this->logconf['on']['sqlerr']) {
-                $this->logger->log('Database Connection Error: ' . $e->getMessage(), $this->logfile);
-            }
+            $this->logger->log('Database Connection Error: ' . $e->getMessage(), $this->logprefix[1]);
             throw new Exception('Database Connection Error: ' . $e->getMessage());
         }
     }
@@ -85,21 +80,47 @@ class SqlService
      */
     public function query($sql, $params = [])
     {
-        if ($logconf['on']['sql']) {
-            $this->logger->log('SQL Query: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
-        }
+        $this->logger->log('SQL Query: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
             $stmt = $this->pdo->prepare($sql . $this->join);
             $stmt->execute($params);
             $this->join = ''; // 重置连接条件
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $this->looger->log('SQL Query Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
+            throw new Exception('SQL Query Error: ' . $e->getMessage());
+        }
+    }
 
+    /**
+     * 执行查询，并返回第一行结果
+     *
+     * @param string $table 表名
+     * @param array $columns 要查询的列名数组
+     * @param string $condition 查询条件
+     * @param array $params 查询条件中的参数
+     * @return array|null 第一行结果数组，如果没有结果则返回 null
+     * @throws Exception 如果查询出错，则抛出异常
+     */
+    public function select($table, $columns = ['*'], $condition = '', $params = [])
+    {
+        $columnsStr = implode(', ', $columns);
+        $sql = "SELECT $columnsStr FROM $table";
+
+        if (!empty($condition)) {
+            $sql .= " WHERE $condition";
+        }
+
+        $this->logger->log('SQL Select: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             // 记录查询错误日志
-            if ($logconf['on']['sqlerr']) {
-                $this->logger->log('SQL Query Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
-            }
-            throw new Exception('SQL Query Error: ' . $e->getMessage());
+            $this->logger->log('SQL Select Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
+            throw new Exception('SQL Select Error: ' . $e->getMessage());
         }
     }
 
@@ -117,18 +138,14 @@ class SqlService
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
 
         $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
-        if ($logconf['on']['sql']) {
-            $this->logger->log('Insert Sql: [' . $sql . ' Data: ' . json_encode($data) . ']', $this->logfile);
-        }
+        $this->logger->log('Insert Sql: [' . $sql . ' Data: ' . json_encode($data) . ']', $this->logprefix[0]);
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute(array_values($data));
             return $this;
         } catch (PDOException $e) {
             // 记录错误日志
-            if ($logconf['on']['sqlerr']) {
-                $this->logger->log('Insert Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
-            }
+            $this->logger->log('Insert Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('Insert Error: ' . $e->getMessage());
         }
     }
@@ -152,19 +169,14 @@ class SqlService
         }
 
         $sql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $condition";
-
-        if ($logconf['on']['sql']) {
-            $this->logger->log('Update Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
-        }
+        $this->logger->log('Update Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $this;
         } catch (PDOException $e) {
             // 记录错误日志
-            if ($logconf['on']['sqlerr']) {
-                $this->logger->log('Update Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
-            }
+            $this->logger->log('Update Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('Update Error: ' . $e->getMessage());
         }
     }
@@ -181,20 +193,14 @@ class SqlService
     public function delete($table, $condition, $params = [])
     {
         $sql = "DELETE FROM $table WHERE $condition";
-
-        if ($logconf['on']['sql']) {
-            $this->logger->log('Delete Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
-        }
-
+        $this->logger->log('Delete Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $this;
         } catch (PDOException $e) {
             // 记录错误日志
-            if ($logconf['on']['sqlerr']) {
-                $this->logger->log('Delete Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
-            }
+            $this->logger->log('Delete Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('Delete Error: ' . $e->getMessage());
         }
     }
@@ -209,8 +215,8 @@ class SqlService
      */
     public function execute($sql, $params = [])
     {
-        if ($logconf['on']['sql']) {
-            $this->logger->log('SQL Execute: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
+        if ($this->logconf['sql']) {
+            $this->logger->log('SQL Execute: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         }
         try {
             $stmt = $this->pdo->prepare($sql);
@@ -218,7 +224,7 @@ class SqlService
             return $this;
         } catch (PDOException $e) {
             // 记录执行错误日志
-            $this->logger->log('SQL Execution Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
+            $this->logger->log('SQL Execution Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('SQL Execution Error: ' . $e->getMessage());
         }
     }
@@ -233,16 +239,14 @@ class SqlService
      */
     public function fetch($sql, $params = [])
     {
-        if ($logconf['on']['sql']) {
-            $this->logger->log('SQL Fetch: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
-        }
+        $this->logger->log('SQL Fetch: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             // 记录查询错误日志
-            $this->logger->log('SQL Fetch Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
+            $this->logger->log('SQL Fetch Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('SQL Fetch Error: ' . $e->getMessage());
         }
     }
@@ -257,9 +261,7 @@ class SqlService
      */
     public function fetchAll($sql, $params = [])
     {
-        if ($logconf['on']['sql']) {
-            $this->logger->log('SQL FetchAll: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
-        }
+        $this->logger->log('SQL FetchAll: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -267,7 +269,7 @@ class SqlService
             return $this;
         } catch (PDOException $e) {
             // 记录查询错误日志
-            $this->logger->log('SQL Fetch Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
+            $this->logger->log('SQL Fetch Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('SQL Fetch Error: ' . $e->getMessage());
         }
     }
@@ -279,9 +281,7 @@ class SqlService
      */
     public function lastInsertId()
     {
-        if ($logconf['on']['sql']) {
-            $this->logger->log('Last Insert ID: ' . $this->pdo->lastInsertId(), $this->logfile);
-        }
+        $this->logger->log('Last Insert ID: ' . $this->pdo->lastInsertId(), $this->logprefix[0]);
         return $this->pdo->lastInsertId();
     }
 
@@ -381,15 +381,33 @@ class SqlService
     }
 
     /**
-     * 参数绑定
+     * 绑定参数到预处理语句
      *
-     * @param PDOStatement $stmt PDOStatement 对象
-     * @param array $params 参数数组
+     * @param PDOStatement $stmt 预处理语句对象
+     * @param array $params 要绑定的参数数组，格式为 [':paramName' => $value]
+     * @return void
+     * @throws Exception 如果绑定参数失败，则抛出异常
      */
-    public function bindParams($stmt, $params)
+    public function bindParams(PDOStatement $stmt, array $params)
     {
-        foreach ($params as $key => $value) {
-            $stmt->bindParam($key, $value);
+        foreach ($params as $paramName => $value) {
+            // 获取参数类型
+            $paramType = PDO::PARAM_STR;
+            if (is_int($value)) {
+                $paramType = PDO::PARAM_INT;
+            } elseif (is_bool($value)) {
+                $paramType = PDO::PARAM_BOOL;
+            } elseif (is_null($value)) {
+                $paramType = PDO::PARAM_NULL;
+            }
+
+            // 尝试绑定参数
+            try {
+                $stmt->bindValue($paramName, $value, $paramType);
+            } catch (PDOException $e) {
+                $this->log('Parameter Binding Error: ' . $e->getMessage(), $this->logprefix[1]);
+                throw new Exception('Parameter Binding Error: ' . $e->getMessage());
+            }
         }
     }
 
@@ -432,9 +450,7 @@ class SqlService
 
         $sql = "INSERT INTO $table ($columns) VALUES $values";
 
-        if ($logconf['on']['sql']) {
-            $this->logger->log('Batch Insert: [' . $sql . ' Params: ' . json_encode($data) . ']', $this->logfile);
-        }
+        $this->logger->log('Batch Insert: [' . $sql . ' Params: ' . json_encode($data) . ']', $this->logprefix[0]);
 
         try {
             $stmt = $this->pdo->prepare($sql);
@@ -442,13 +458,10 @@ class SqlService
             foreach ($data as $item) {
                 $stmt->execute(array_values($item));
             }
-
             return $this;
         } catch (PDOException $e) {
             // 记录错误日志
-            if ($logconf['on']['sqlerr']) {
-                $this->logger->log('Batch Insert Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
-            }
+            $this->logger->log('Batch Insert Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('Batch Insert Error: ' . $e->getMessage());
         }
     }
@@ -479,20 +492,14 @@ class SqlService
                 }
 
                 $sql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $condition";
-
-                if ($logconf['on']['sql']) {
-                    $this->logger->log('Batch Update: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
-                }
+                $this->logger->log('Batch Update: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($params);
             }
-
             return $this;
         } catch (PDOException $e) {
             // 记录错误日志
-            if ($logconf['on']['sqlerr']) {
-                $this->logger->log('Batch Update Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
-            }
+            $this->logger->log('Batch Update Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('Batch Update Error: ' . $e->getMessage());
         }
     }
@@ -509,20 +516,244 @@ class SqlService
     public function batchDelete($table, $condition, $params = [])
     {
         $sql = "DELETE FROM $table WHERE $condition";
-        if ($logconf['on']['sql']) {
-            $this->logger->log('Batch Delete: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logfile);
-        }
+        $this->logger->log('Batch Delete: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $this;
         } catch (PDOException $e) {
             // 记录错误日志
-            if ($logconf['on']['sqlerr']) {
-                $this->logger->log('Batch Delete Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logfile);
-            }
+            $this->logger->log('Batch Delete Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
             throw new Exception('Batch Delete Error: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * 建表
+     *
+     * @param string $table 表名
+     * @param array $columns 列定义数组
+     * @return bool 是否成功
+     * @throws Exception 如果建表失败，则抛出异常
+     */
+    public function createTable($table, $columns)
+    {
+        $sql = "CREATE TABLE IF NOT EXISTS $table (";
+        $columnDefinitions = [];
+        foreach ($columns as $columnName => $columnDefinition) {
+            $columnDefinitions[] = "$columnName $columnDefinition";
+        }
+        $sql .= implode(', ', $columnDefinitions);
+        $sql .= ")";
+        $this->logger->log('Create Table: [' . $sql . ']', $this->logprefix[0]);
+        try {
+            $this->pdo->exec($sql);
+            return true;
+        } catch (PDOException $e) {
+            // 记录错误日志
+            $this->logger->log('Create Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
+            throw new Exception('Create Table Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 清空表
+     *
+     * @param string $table 表名
+     * @return bool 是否成功
+     * @throws Exception 如果清空表失败，则抛出异常
+     */
+    public function truncateTable($table)
+    {
+        $sql = "TRUNCATE TABLE $table";
+        $this->logger->log('Truncate Table: [' . $sql . ']', $this->logprefix[0]);
+        try {
+            $this->pdo->exec($sql);
+            return true;
+        } catch (PDOException $e) {
+            // 记录错误日志
+            $this->logger->log('Truncate Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
+            throw new Exception('Truncate Table Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 删除表
+     *
+     * @param string $table 表名
+     * @return bool 是否成功
+     * @throws Exception 如果删除表失败，则抛出异常
+     */
+    public function dropTable($table)
+    {
+        $sql = "DROP TABLE IF EXISTS $table";
+        $this->logger->log('Drop Table: [' . $sql . ']', $this->logprefix[0]);
+        try {
+            $this->pdo->exec($sql);
+            return true;
+        } catch (PDOException $e) {
+            // 记录错误日志
+            $this->logger->log('Drop Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
+            throw new Exception('Drop Table Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 更新表格
+     *
+     * @param string $table 表名
+     * @param array $changes 要修改的列定义数组
+     * @return bool 是否成功
+     * @throws Exception 如果更新表格失败，则抛出异常
+     */
+    public function alterTable($table, $changes)
+    {
+        $sql = "ALTER TABLE $table";
+        $alterations = [];
+        foreach ($changes as $changeType => $changeDefinition) {
+            $alterations[] = "$changeType $changeDefinition";
+        }
+        $sql .= ' ' . implode(', ', $alterations);
+        $this->logger->log('Alter Table: [' . $sql . ']', $this->logprefix[0]);
+        try {
+            $this->pdo->exec($sql);
+            return true;
+        } catch (PDOException $e) {
+            // 记录错误日志
+            $this->logger->log('Alter Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
+            throw new Exception('Alter Table Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 导出 SQL
+     *
+     * @param string $filePath 导出文件路径
+     * @return bool 是否成功
+     * @throws Exception 如果导出 SQL 失败，则抛出异常
+     */
+    public function exportSql($filePath)
+    {
+        $sql = 'SHOW TABLES';
+        $tables = $this->query($sql);
+        $output = '';
+
+        foreach ($tables as $table) {
+            $tableName = reset($table);
+            $output .= "DROP TABLE IF EXISTS $tableName;\n\n";
+            $createTableSQL = $this->pdo->query("SHOW CREATE TABLE $tableName")->fetch(PDO::FETCH_ASSOC)['Create Table'];
+            $output .= $createTableSQL . ";\n\n";
+
+            $selectQuery = "SELECT * FROM $tableName";
+            $rows = $this->query($selectQuery);
+            foreach ($rows as $row) {
+                $columnNames = implode(', ', array_keys($row));
+                $columnValues = implode(', ', array_map(function ($value) {
+                    return is_numeric($value) ? $value : "'" . addslashes($value) . "'";
+                }, $row));
+                $output .= "INSERT INTO $tableName ($columnNames) VALUES ($columnValues);\n";
+            }
+            $output .= "\n";
+        }
+        try {
+            file_put_contents($filePath, $output);
+            return true;
+        } catch (Exception $e) {
+            // 记录错误日志
+            $this->logger->log('Export SQL Error: ' . $e->getMessage(), $this->logprefix[1]);
+            throw new Exception('Export SQL Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 导入 SQL 或 ZIP 文件
+     *
+     * @param string $filePath 导入文件路径，可以是 SQL 文件或包含 SQL 文件的 ZIP 文件
+     * @return bool 是否成功
+     * @throws Exception 如果导入 SQL 失败，则抛出异常
+     */
+    public function importSql($filePath)
+    {
+        // 检查文件类型
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        if ($extension === 'zip') {
+            // 如果是 ZIP 文件，则解压并查找 SQL 文件
+            $zip = new ZipArchive;
+            if ($zip->open($filePath) === true) {
+                // 解压缩 ZIP 文件到临时目录
+                $tempDir = sys_get_temp_dir() . '/' . uniqid('sql_import_', true);
+                $zip->extractTo($tempDir);
+                $zip->close();
+
+                // 遍历临时目录中的文件
+                $files = scandir($tempDir);
+                foreach ($files as $file) {
+                    if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
+                        // 如果是 SQL 文件，则导入
+                        $sqlFile = $tempDir . '/' . $file;
+                        $this->importSingleSqlFile($sqlFile);
+                    }
+                }
+
+                // 删除临时目录
+                $this->deleteDirectory($tempDir);
+
+                return true;
+            } else {
+                throw new Exception('Failed to open the ZIP file');
+            }
+        } elseif ($extension === 'sql') {
+            // 如果是 SQL 文件，则直接导入
+            return $this->importSingleSqlFile($filePath);
+        } else {
+            $this->logger->log('Unsupported file format', $this->logprefix[1]);
+            throw new Exception('Unsupported file format');
+        }
+    }
+
+/**
+ * 导入单个 SQL 文件
+ *
+ * @param string $filePath SQL 文件路径
+ * @return bool 是否成功
+ * @throws Exception 如果导入 SQL 失败，则抛出异常
+ */
+    private function importSingleSqlFile($filePath)
+    {
+        $sql = file_get_contents($filePath);
+
+        try {
+            $this->pdo->exec($sql);
+            return true;
+        } catch (PDOException $e) {
+            // 记录错误日志
+            $this->logger->log('Import SQL Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
+            throw new Exception('Import SQL Error: ' . $e->getMessage());
+        }
+    }
+
+/**
+ * 递归删除目录
+ *
+ * @param string $directory 目录路径
+ */
+    private function deleteDirectory($directory)
+    {
+        if (!file_exists($directory)) {
+            return;
+        }
+
+        $files = array_diff(scandir($directory), array('.', '..'));
+        foreach ($files as $file) {
+            $path = $directory . '/' . $file;
+            if (is_dir($path)) {
+                $this->deleteDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($directory);
+
     }
 
 }

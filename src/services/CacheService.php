@@ -4,6 +4,10 @@ namespace Imccc\Snail\Services;
 
 use Imccc\Snail\Core\Config;
 use Imccc\Snail\Core\Container;
+use Imccc\Snail\Services\Drivers\FileCacheDriver;
+use Imccc\Snail\Services\Drivers\MemcachedCacheDriver;
+use Imccc\Snail\Services\Drivers\MongoCacheDriver;
+use Imccc\Snail\Services\Drivers\RedisCacheDriver;
 use RuntimeException;
 
 class CacheService
