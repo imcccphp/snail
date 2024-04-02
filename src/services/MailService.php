@@ -35,7 +35,7 @@ class MailService
     private $log;
 
     // 日志文件名
-    private $logfile = '_MAIL_';
+    private $logprefix = ['mail', 'error'];
 
     // 依赖注入容器
     protected $container;
@@ -77,13 +77,13 @@ class MailService
         }
         // 记录连接日志
         if ($this->log) {
-            $this->logger->log('Connecting to SMTP host: ' . $this->host . ':' . $this->port, $this->logfile);
+            $this->logger->log('Connecting to SMTP host: ' . $this->host . ':' . $this->port, $this->logprefix[0]);
         }
         // 检查连接是否成功
         if (!$this->socket) {
             // 记录连接失败日志并抛出异常
             if ($this->debug) {
-                $this->logger->log('Could not connect to SMTP host: ' . $errstr . ' (' . $errno . ')', $this->logfile);
+                $this->logger->log('Could not connect to SMTP host: ' . $errstr . ' (' . $errno . ')', $this->logprefix[1]);
             }
             throw new Exception("Could not connect to SMTP host: $errstr ($errno)");
         }
@@ -205,7 +205,7 @@ class MailService
 
         // 记录邮件发送日志
         if ($this->log) {
-            $this->logger->log("Mail sent successfully.\r\n From: $from\r\n To: $to\r\n CC: " . implode(", ", $cc) . "\r\n BCC: " . implode(", ", $bcc) . "\r\n Subject: $subject\r\n Body: $body", $this->logfile);
+            $this->logger->log("Mail sent successfully.\r\n From: $from\r\n To: $to\r\n CC: " . implode(", ", $cc) . "\r\n BCC: " . implode(", ", $bcc) . "\r\n Subject: $subject\r\n Body: $body", $this->logprefix[0]);
         }
 
         // 关闭套接字连接

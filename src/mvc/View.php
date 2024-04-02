@@ -2,6 +2,8 @@
 
 namespace Imccc\Snail\Mvc;
 
+use Imccc\Snail\Core\Container;
+
 class View
 {
     protected $container;

@@ -13,6 +13,7 @@ class Model
 
     public function __construct(Container $container)
     {
+        $this->container = $container;
         // 从容器中解析 SqlService 对象
         $this->sqlService = $container->resolve('SqlService');
     }

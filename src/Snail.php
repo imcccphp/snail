@@ -12,6 +12,7 @@ use Imccc\Snail\Core\HandlerException;
 use Imccc\Snail\Core\Router;
 use Imccc\Snail\Services\ConfigService;
 use Imccc\Snail\Services\LoggerService;
+use Imccc\Snail\Services\SqlService;
 
 class Snail
 {
@@ -51,6 +52,11 @@ class Snail
         // 注册配置服务
         $this->container->bind('ConfigService', function () {
             return new ConfigService($this->container);
+        });
+
+        // 注册SQL服务
+        $this->container->bind('SqlService', function () {
+            return new SqlService($this->container);
         });
 
         $config = $this->container->resolve('ConfigService');

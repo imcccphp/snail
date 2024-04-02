@@ -29,8 +29,8 @@ class Controller
         $this->container = $container;
         $this->config = $container->resolve('ConfigService');
         $this->logger = $container->resolve('LoggerService');
-        $this->_view = new View($container);
-        $this->_model = new Model($container);
+        $this->_view = new View($this->container);
+        $this->_model = new Model($this->container);
     }
 
     /**
