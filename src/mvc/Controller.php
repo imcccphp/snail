@@ -7,6 +7,7 @@ use RuntimeException;
 
 class Controller
 {
+    protected $api;
     protected $config; // 配置信息
     protected $routes; // 用于存储路由信息
     protected $container;
@@ -16,7 +17,6 @@ class Controller
     private $_view;
     private $_model;
     private $_method;
-    private $_api;
 
     /**
      * 构造函数
@@ -29,8 +29,38 @@ class Controller
         $this->container = $container;
         $this->config = $container->resolve('ConfigService');
         $this->logger = $container->resolve('LoggerService');
+        $this->api = $container->autoRegister('Imccc\Snail\Services', 'Imccc\Snail\Services');
         $this->_view = new View($this->container);
         $this->_model = new Model($this->container);
+        $this->getServices();
+    }
+
+    /**
+     * 获取服务
+     */
+    public function getServices()
+    {
+        // 获取所有已经注册的服务
+        $bindings = $container->getBindings();
+
+        // 遍历输出每个服务的信息
+        foreach ($bindings as $serviceName => $binding) {
+            echo "Service Name: $serviceName\n";
+            echo "Concrete: " . $binding['concrete'] . "\n";
+            echo "Shared: " . ($binding['shared'] ? 'Yes' : 'No') . "\n";
+            echo "-------------------------\n";
+        }
+    }
+
+    /**
+     * 注册服务
+     *
+     * @param string $name 服务名称
+     * @param mixed $service 服务对象
+     */
+    public function registerService(string $name, $service): void
+    {
+        $this->container->bind($name, $service);
     }
 
     /**

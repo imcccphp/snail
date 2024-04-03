@@ -6,36 +6,6 @@
  * @since 0.0.1
  * @author Imccc
  * @copyright Copyright (c) 2024 Imccc.
- *
- * 绑定服务：使用 bind 方法将接口或抽象类绑定到具体实现类，示例：$container->bind('LoggerService', 'FileLogger');
- * 绑定参数：使用 bindParameter 方法将参数绑定到容器中，示例：$container->bindParameter('debug', true);
- * 定义服务别名：使用 alias 方法定义服务别名，示例：$container->alias('Log', 'LoggerService');
- * 解析服务：使用 resolve 方法获取服务实例，支持别名，示例：$container->resolve('Log');
- * 标记服务：使用 tag 方法给服务打上标记，示例：$container->tag('LoggerService', 'logging');
- * 销毁实例：使用 destroy 方法销毁指定服务的实例，示例：$container->destroy('LoggerService');
- * 销毁所有实例：使用 destroyAll 方法销毁所有服务的实例，示例：$container->destroyAll();
- *
- * // 创建容器实例
- * $container = new Container();
-
- * // 示例 1: 绑定接口到具体实现类，并获取实例
- * $container->bind('SomeInterface', 'SomeImplementation');
- * $instance = $container->make('SomeInterface');
-
- * // 示例 2: 绑定为单例并获取共享实例
- * $container->bind('AnotherInterface', 'AnotherImplementation', true);
- * $sharedInstance = $container->make('AnotherInterface');
-
- * // 示例 3: 链式调用
- * $container->bind('ThirdInterface')->for('ThirdInterface')->bind('ThirdImplementation');
- * $thirdInstance = $container->make('ThirdInterface');
-
- * // 示例 4: 验证链式调用的调用顺序
- * try {
- * $container->bind('FourthInterface')->for('FifthInterface');
- * } catch (Exception $e) {
- * echo $e->getMessage() . PHP_EOL; // 输出: The last bound service is not 'FifthInterface'.
- * }
  */
 
 namespace Imccc\Snail\Core;
@@ -59,6 +29,39 @@ class Container
             self::$instance = new self();
         }
         return self::$instance;
+    }
+
+    /**
+     * 自动注册服务
+     *
+     * @param string $namespace 服务类所在的命名空间
+     * @param string $interfaceNamespace 接口或抽象类所在的命名空间
+     * @param string $suffix 具体实现类的后缀（可选，默认为 'Implementation'）
+     * @return $this 当前容器实例
+     * @throws Exception 如果自动注册失败时抛出异常
+     */
+    public function autoRegister(string $serviceNamespace, string $interfaceNamespace, string $interfaceSuffix = 'Interface')
+    {
+        // 获取指定命名空间下的所有类
+        $services = glob(__DIR__ . '/' . str_replace('\\', '/', $serviceNamespace) . '/*.php');
+
+        foreach ($services as $service) {
+            $className = basename($service, '.php');
+            $fullClassName = $serviceNamespace . '\\' . $className;
+
+            // 使用反射机制检查类是否符合特定条件，例如类名包含特定后缀或者实现了特定的方法
+            $reflection = new ReflectionClass($fullClassName);
+
+            // 如果类符合特定条件，则注册到容器中
+            if (!$reflection->isAbstract() && !$reflection->isTrait() && !$reflection->isInterface()) {
+                // 构造服务名称和接口名称
+                $serviceName = $serviceNamespace . '\\' . $className;
+                $interfaceName = $interfaceNamespace . '\\' . $className . $interfaceSuffix;
+
+                // 绑定服务
+                $this->bind($interfaceName, $serviceName);
+            }
+        }
     }
 
     /**
@@ -219,10 +222,9 @@ class Container
             return new $concrete;
         }
 
-        // 否则解析构造函数参数的依赖关系
+        // 否则解析构造函数参数的依赖关系并创建实例
         $dependencies = $this->resolveDependencies($constructor->getParameters());
 
-        // 创建实例并传入依赖
         return $reflector->newInstanceArgs($dependencies);
     }
 
@@ -240,18 +242,15 @@ class Container
         foreach ($parameters as $parameter) {
             $dependency = $parameter->getClass();
 
-            // 如果参数不是类类型，则检查是否有默认值
-            if ($dependency === null) {
-                if ($parameter->isDefaultValueAvailable()) {
-                    // 如果有默认值，则使用默认值
-                    $dependencies[] = $parameter->getDefaultValue();
-                } else {
-                    // 否则无法解析依赖
-                    throw new Exception("Unable to resolve dependency '{$parameter->getName()}'.");
-                }
-            } else {
-                // 递归调用 make 方法获取依赖的实例
+            // 如果参数是类类型，则递归调用 make 方法获取依赖的实例
+            if ($dependency !== null) {
                 $dependencies[] = $this->make($dependency->name);
+            } elseif ($parameter->isDefaultValueAvailable()) {
+                // 如果参数有默认值，则使用默认值
+                $dependencies[] = $parameter->getDefaultValue();
+            } else {
+                // 否则无法解析依赖
+                throw new Exception("Unable to resolve dependency '{$parameter->getName()}'.");
             }
         }
 

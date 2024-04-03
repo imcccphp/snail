@@ -1,11 +1,12 @@
 <?php
 
-namespace Imccc\Snail\Core;
+namespace Imccc\Snail\Services;
 
+use Imccc\Snail\Core\Container;
 use RuntimeException;
 use SimpleXMLElement;
 
-class Api
+class ApiService
 {
     protected $container;
     protected $format;

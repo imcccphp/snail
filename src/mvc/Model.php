@@ -22,39 +22,63 @@ class Model
         $this->sqlService = $container->resolve('SqlService');
         $this->logger = $container->resolve('LoggerService');
         $this->prefix = $this->sqlService->getPrefix();
+        $this->softDeleteField = $this->sqlService->getSoftDeleteField();
     }
 
+    /**
+     * 设置软删除
+     * @param bool $enabled
+     * @return $this
+     */
     public function withSoftDeletes(bool $enabled = true): self
     {
         $this->softDeletes = $enabled;
         return $this;
     }
 
+    /**
+     * 设置模型表名
+     * @param string $table
+     * @return $this
+     */
     public function setModel(string $table): self
     {
         $this->table = $this->prefix . $table;
         return $this;
     }
 
+    /**
+     * 设置查询条件
+     * @param array $conditions
+     * @return $this
+     */
     public function where(array $conditions): self
     {
         $this->conditions = $conditions;
         return $this;
     }
 
+    /**
+     * 设置查询字段
+     * @param array $fields
+     * @return $this
+     */
     public function select(array $fields): self
     {
         $this->fields = $fields;
         return $this;
     }
 
+    /**
+     * 查询数据
+     * @return array
+     */
     public function find(): array
     {
         // 如果启用了软删除，自动添加条件
         if ($this->softDeletes) {
-            $this->conditions['deleted_at'] = null;
+            $this->conditions[$this->softDeleteField] = null;
         }
-
         try {
             $result = $this->sqlService->select($this->table, $this->fields, $this->conditions);
             $this->reset();
@@ -66,6 +90,11 @@ class Model
         }
     }
 
+    /**
+     * 插入数据
+     * @param array $data
+     * @return bool
+     */
     public function insert(array $data): bool
     {
         $this->beforeSave();
@@ -79,6 +108,11 @@ class Model
         }
     }
 
+    /**
+     * 更新数据
+     * @param array $data
+     * @return bool
+     */
     public function update(array $data): bool
     {
         $this->beforeSave();
@@ -92,11 +126,15 @@ class Model
         }
     }
 
+    /**
+     * 删除数据
+     * @return bool
+     */
     public function delete(): bool
     {
         if ($this->softDeletes) {
             // 实现软删除
-            return $this->update(['deleted_at' => date('Y-m-d H:i:s')]);
+            return $this->update([$this->softDeleteField => date('Y-m-d H:i:s')]);
         }
 
         try {

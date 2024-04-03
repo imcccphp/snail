@@ -26,6 +26,7 @@ class SqlService
     private $logconf;
     private $join = '';
     private $prefix;
+    private $softDeleteField;
 
     /**
      * 构造函数
@@ -38,39 +39,51 @@ class SqlService
         $this->logger = $this->container->resolve('LoggerService');
         $this->config = $this->container->resolve('ConfigService')->get('database');
         $this->logconf = $this->container->resolve('ConfigService')->get('logger.on');
+        $this->prefix = $this->config['prefix'];
+        $this->softDeleteField = $this->config['deleted_at'];
+        $this->connect();
+    }
 
+    /**
+     * 连接到数据库
+     *
+     * @return PDO PDO对象
+     */
+    private function connect()
+    {
+        $driver = $this->config['db'];
+        $dsnConfig = $this->config['dsn'][$driver];
+        $dsn = $this->buildDsn($driver, $dsnConfig);
         try {
-            $driver = $this->config['db'];
-            $dsnConfig = $this->config['dsn'][$driver];
-            $username = $dsnConfig['user'];
-            $password = $dsnConfig['password'];
-            $port = $dsnConfig['port'];
-            $options = $dsnConfig['options'];
-            $this->prefix = $dsnConfig['prefix'];
-
-            switch ($driver) {
-                case 'mysql':
-                    $dsn = "mysql:host={$dsnConfig['host']};dbname={$dsnConfig['dbname']};charset={$dsnConfig['charset']};port={$port}";
-                    break;
-                case 'sqlsrv':
-                    $dsn = "sqlsrv:Server={$dsnConfig['host']},{$port};Database={$dsnConfig['dbname']};charset={$dsnConfig['charset']}";
-                    break;
-                case 'oci':
-                    $dsn = "oci:dbname={$dsnConfig['dbname']}";
-                    break;
-                default:
-                    throw new Exception("Unsupported database driver: $driver");
-            }
-
-            $this->pdo = new PDO($dsn, $username, $password, $options);
+            $this->pdo = new PDO($dsn, $dsnConfig['user'], $dsnConfig['password'], $dsnConfig['options'] + [PDO::ATTR_PERSISTENT => true]);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $this->logger->log('PDO DSN: [' . $dsn . ']', $this->logprefix[0]);
+            $this->logger->info('Connected to database');
         } catch (PDOException $e) {
-            $this->logger->log('Database Connection Error: ' . $e->getMessage(), $this->logprefix[1]);
+            $this->logger->error('Database Connection Error: ' . $e->getMessage());
             throw new Exception('Database Connection Error: ' . $e->getMessage());
         }
     }
+
+    /**
+     * 获取PDO对象
+     *
+     * @return PDO PDO对象
+     */
+    private function buildDsn($driver, $dsnConfig)
+    {
+        switch ($driver) {
+            case 'mysql':
+                return "mysql:host={$dsnConfig['host']};dbname={$dsnConfig['dbname']};charset={$dsnConfig['charset']};port={$dsnConfig['port']}";
+            case 'sqlsrv':
+                return "sqlsrv:Server={$dsnConfig['host']},{$dsnConfig['port']};Database={$dsnConfig['dbname']};charset={$dsnConfig['charset']}";
+            case 'oci':
+                return "oci:dbname={$dsnConfig['dbname']}";
+            default:
+                throw new Exception("Unsupported database driver: $driver");
+        }
+    }
+
     /**
      * 获取表前缀
      *
@@ -81,12 +94,40 @@ class SqlService
         return $this->prefix;
     }
 
+    /**
+     * 获取软删除字段
+     *
+     * @return string 软删除字段
+     */
+    public function getSoftDeleteField()
+    {
+        return $this->softDeleteField;
+    }
+
+    /**
+     * 处理异常
+     *
+     * @param PDOException $e 异常对象
+     * @param string $opt 操作类型
+     * @return void
+     * @throws Exception 如果处理异常出错，则抛出异常
+     */
     protected function handleException(PDOException $e, $opt): void
     {
         // 这里可以添加异常处理逻辑，比如记录日志等
         $this->logger->log('SQL Error: ' . $opt . $e->getMessage(), $this->logprefix[1]);
         // throw $e; // 或者重新抛出异常
         throw new Exception($opt . $e->getMessage());
+    }
+
+    /**
+     * 常规日志
+     *
+     * @param string $msg 日志消息
+     */
+    public function log($msg)
+    {
+        $this->logger->log($msg, $this->logprefix[0]);
     }
 
     /**
@@ -99,7 +140,7 @@ class SqlService
      */
     public function query($sql, $params = [])
     {
-        $this->logger->log('SQL Query: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+        $this->log('SQL Query: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql . $this->join);
             $stmt->execute($params);
@@ -128,7 +169,7 @@ class SqlService
         if (!empty($condition)) {
             $sql .= " WHERE $condition";
         }
-        $this->logger->log('SQL Select: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+        $this->log('SQL Select: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -152,7 +193,7 @@ class SqlService
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
 
         $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
-        $this->logger->log('Insert Sql: [' . $sql . ' Data: ' . json_encode($data) . ']', $this->logprefix[0]);
+        $this->log('Insert Sql: [' . $sql . ' Data: ' . json_encode($data) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute(array_values($data));
@@ -181,7 +222,7 @@ class SqlService
         }
 
         $sql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $condition";
-        $this->logger->log('Update Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+        $this->log('Update Sql: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -203,7 +244,7 @@ class SqlService
     public function delete($table, $condition, $params = [])
     {
         $sql = "DELETE FROM $table WHERE $condition";
-        $this->logger->log('Delete Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+        $this->log('Delete Sql: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -223,15 +264,12 @@ class SqlService
      */
     public function execute($sql, $params = [])
     {
-        if ($this->logconf['sql']) {
-            $this->logger->log('SQL Execute: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
-        }
+        $this->log('SQL Execute: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $this;
         } catch (PDOException $e) {
-            // 记录执行错误日志
             $this->handleException($e, 'Execution Error:' . $sql);
         }
     }
@@ -246,7 +284,7 @@ class SqlService
      */
     public function fetch($sql, $params = [])
     {
-        $this->logger->log('SQL Fetch: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+        $this->log('SQL Fetch: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -266,7 +304,7 @@ class SqlService
      */
     public function fetchAll($sql, $params = [])
     {
-        $this->logger->log('SQL FetchAll: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+        $this->log('SQL FetchAll: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -284,7 +322,7 @@ class SqlService
      */
     public function lastInsertId()
     {
-        $this->logger->log('Last Insert ID: ' . $this->pdo->lastInsertId(), $this->logprefix[0]);
+        $this->log('Last Insert ID: ' . $this->pdo->lastInsertId());
         return $this->pdo->lastInsertId();
     }
 
@@ -451,7 +489,7 @@ class SqlService
         $values = implode(', ', array_fill(0, count($data), $placeholders));
 
         $sql = "INSERT INTO $table ($columns) VALUES $values";
-        $this->logger->log('Batch Insert: [' . $sql . ' Params: ' . json_encode($data) . ']', $this->logprefix[0]);
+        $this->logger->log('Batch Insert: [' . $sql . ' Params: ' . json_encode($data) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             // 执行多次插入
@@ -490,7 +528,7 @@ class SqlService
                 }
 
                 $sql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $condition";
-                $this->logger->log('Batch Update: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+                $this->logger->log('Batch Update: [' . $sql . ' Params: ' . json_encode($params) . ']');
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($params);
             }
@@ -512,7 +550,7 @@ class SqlService
     public function batchDelete($table, $condition, $params = [])
     {
         $sql = "DELETE FROM $table WHERE $condition";
-        $this->logger->log('Batch Delete: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
+        $this->log('Batch Delete: [' . $sql . ' Params: ' . json_encode($params) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -539,7 +577,7 @@ class SqlService
         }
         $sql .= implode(', ', $columnDefinitions);
         $sql .= ")";
-        $this->logger->log('Create Table: [' . $sql . ']', $this->logprefix[0]);
+        $this->log('Create Table: [' . $sql . ']');
         try {
             $this->pdo->exec($sql);
             return true;
@@ -558,7 +596,7 @@ class SqlService
     public function truncateTable($table)
     {
         $sql = "TRUNCATE TABLE $table";
-        $this->logger->log('Truncate Table: [' . $sql . ']', $this->logprefix[0]);
+        $this->log('Truncate Table: [' . $sql . ']');
         try {
             $this->pdo->exec($sql);
             return true;
@@ -577,7 +615,7 @@ class SqlService
     public function dropTable($table)
     {
         $sql = "DROP TABLE IF EXISTS $table";
-        $this->logger->log('Drop Table: [' . $sql . ']', $this->logprefix[0]);
+        $this->log('Drop Table: [' . $sql . ']');
         try {
             $this->pdo->exec($sql);
             return true;
@@ -602,7 +640,7 @@ class SqlService
             $alterations[] = "$changeType $changeDefinition";
         }
         $sql .= ' ' . implode(', ', $alterations);
-        $this->logger->log('Alter Table: [' . $sql . ']', $this->logprefix[0]);
+        $this->log('Alter Table: [' . $sql . ']');
         try {
             $this->pdo->exec($sql);
             return true;
@@ -732,5 +770,10 @@ class SqlService
             }
         }
         rmdir($directory);
+    }
+
+    public function __destruct()
+    {
+        $this->pdo = null; // Release connection when object is destroyed
     }
 }
