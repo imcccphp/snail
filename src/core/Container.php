@@ -30,6 +30,21 @@ class Container
         }
         return self::$instance;
     }
+
+// 私有构造函数以确保只能通过 getInstance 方法获取实例
+    private function __construct()
+    {
+    }
+
+    // 克隆方法私有化，防止外部克隆对象
+    private function __clone()
+    {
+    }
+
+    // 反序列化方法私有化，防止外部反序列化对象
+    private function __wakeup()
+    {
+    }
     /**
      * 获取所有服务
      * @return array 所有服务
@@ -37,67 +52,6 @@ class Container
     public function getBindings()
     {
         return $this->bindings;
-    }
-
-    /**
-     * 自动注册服务
-     *
-     * @param string $serviceNamespace 服务类所在的命名空间
-     * @param string $interfaceNamespace 接口或抽象类所在的命名空间
-     * @param string $interfaceSuffix 具体实现类的后缀（可选，默认为 'Implementation'）
-     * @return $this 当前容器实例
-     * @throws Exception 如果自动注册失败时抛出异常
-     */
-    public function autoRegister(string $serviceNamespace, string $interfaceNamespace, string $interfaceSuffix = 'Interface')
-    {
-        // 获取指定命名空间下的所有类
-        $services = glob(__DIR__ . '/../' . str_replace('\\', '/', $serviceNamespace) . '/*.php');
-
-        foreach ($services as $service) {
-            $className = basename($service, '.php');
-            $fullClassName = $serviceNamespace . '\\' . $className;
-
-            // 使用反射机制检查类是否符合特定条件，例如类名包含特定后缀或者实现了特定的方法
-            if (!class_exists($fullClassName)) {
-                // 尝试加载类文件
-                require_once $service;
-            }
-
-            // 检查类是否符合特定条件
-            if (class_exists($fullClassName) && !$this->isAbstractOrTrait($fullClassName) && !$this->isInterface($fullClassName, $interfaceSuffix)) {
-                // 构造服务名称和接口名称
-                $serviceName = $serviceNamespace . '\\' . $className;
-                $interfaceName = $interfaceNamespace . '\\' . $className . $interfaceSuffix;
-
-                // 绑定服务
-                $this->bind($interfaceName, $serviceName);
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * 检查类是否为抽象类或特性
-     *
-     * @param string $className 类名
-     * @return bool
-     */
-    protected function isAbstractOrTrait(string $className): bool
-    {
-        return (new ReflectionClass($className))->isAbstract() || (new ReflectionClass($className))->isTrait();
-    }
-
-    /**
-     * 检查类是否为接口类
-     *
-     * @param string $className 类名
-     * @param string $interfaceSuffix 接口类的后缀
-     * @return bool
-     */
-    protected function isInterface(string $className, string $interfaceSuffix): bool
-    {
-        return interface_exists($className . $interfaceSuffix);
     }
 
     /**
@@ -161,6 +115,71 @@ class Container
     }
 
     /**
+     * 自动注册服务
+     *
+     * @param string $serviceNamespace 服务类所在的命名空间
+     * @param string $interfaceNamespace 接口或抽象类所在的命名空间
+     * @param string $interfaceSuffix 具体实现类的后缀（可选，默认为 'Interface'）
+     * @return $this 当前容器实例
+     * @throws Exception 如果自动注册失败时抛出异常
+     */
+    public function autoRegister(string $serviceNamespace, string $interfaceNamespace, string $interfaceSuffix = 'Interface')
+    {
+        // 获取指定命名空间下的所有类
+        $servicePath = dirname(__DIR__) . '/' . str_replace('\\', '/', $serviceNamespace);
+        $services = glob($servicePath . '/*.php');
+
+        foreach ($services as $service) {
+            $className = basename($service, '.php');
+            $fullClassName = $serviceNamespace . '\\' . $className;
+
+            // 检查类是否符合特定条件
+            if (!$this->isAbstractOrTrait($fullClassName) && !$this->isInterface($fullClassName, $interfaceSuffix)) {
+                // 构造服务名称和接口名称
+                $serviceName = $serviceNamespace . '\\' . $className;
+                $interfaceName = $interfaceNamespace . '\\' . $className . $interfaceSuffix;
+
+                // 检查接口或抽象类是否存在
+                if (!interface_exists($interfaceName) && !class_exists($interfaceName)) {
+                    throw new Exception("Interface or abstract class '$interfaceName' does not exist.");
+                }
+
+                // 检查类是否已经被绑定
+                if (isset($this->bindings[$interfaceName])) {
+                    throw new Exception("Service '$interfaceName' is already bound.");
+                }
+
+                // 绑定服务
+                $this->bind($interfaceName, $serviceName);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * 检查类是否为抽象类或特性
+     *
+     * @param string $className 类名
+     * @return bool
+     */
+    protected function isAbstractOrTrait(string $className): bool
+    {
+        return (new ReflectionClass($className))->isAbstract() || (new ReflectionClass($className))->isTrait();
+    }
+
+    /**
+     * 检查类是否为接口类
+     *
+     * @param string $className 类名
+     * @param string $interfaceSuffix 接口类的后缀
+     * @return bool
+     */
+    protected function isInterface(string $className, string $interfaceSuffix): bool
+    {
+        return interface_exists($className . $interfaceSuffix);
+    }
+    /**
      * 获取服务实例，支持别名
      *
      * @param string $abstract 服务名称或别名
@@ -176,8 +195,8 @@ class Container
 
         // 如果服务不存在，尝试自动注册服务
         if (!isset($this->bindings[$abstract])) {
-            $this->autoRegister($abstract, 'Imccc\Snail\Src\Services', 'Imccc\Snail\Src\Services');
-            // $this->autoRegister($abstract, 'Imccc\Snail\Services', 'Service'); // 假设服务类统一放在 App\Services 命名空间下，并且以 Service 结尾
+            $this->autoRegister('Imccc\Snail\Services', 'Imccc\Snail\Services', 'Service');
+            // $this->autoRegister('Services', 'Services', 'Service');
         }
 
         // 再次检查是否注册成功

@@ -12,6 +12,7 @@ return [
         'request' => true,
         'response' => true,
         'controller' => true,
+        'container' => true,
     ],
     'logprefix' => [
         'def' => '_DEF_',
@@ -24,6 +25,7 @@ return [
         'view' => '_VIEW_',
         'model' => '_MODEL_',
         'controller' => '_CONTROLLER_',
+        'container' => '_CONTAINER_',
         'socket' => '_SOCKET_',
         'router' => '_ROUTER_',
         'request' => '_REQUEST_',
