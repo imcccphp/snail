@@ -41,7 +41,7 @@ class Controller
     public function getServices()
     {
         // 获取所有已经注册的服务
-        $bindings = $container->getBindings();
+        $bindings = $this->container->getBindings();
 
         // 遍历输出每个服务的信息
         foreach ($bindings as $serviceName => $binding) {

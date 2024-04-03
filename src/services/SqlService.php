@@ -39,7 +39,6 @@ class SqlService
         $this->logger = $this->container->resolve('LoggerService');
         $this->config = $this->container->resolve('ConfigService')->get('database');
         $this->logconf = $this->container->resolve('ConfigService')->get('logger.on');
-        $this->prefix = $this->config['prefix'];
         $this->softDeleteField = $this->config['deleted_at'];
         $this->connect();
     }
@@ -53,14 +52,15 @@ class SqlService
     {
         $driver = $this->config['db'];
         $dsnConfig = $this->config['dsn'][$driver];
+        $this->prefix = $dsnConfig['prefix'];
         $dsn = $this->buildDsn($driver, $dsnConfig);
         try {
             $this->pdo = new PDO($dsn, $dsnConfig['user'], $dsnConfig['password'], $dsnConfig['options'] + [PDO::ATTR_PERSISTENT => true]);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $this->logger->info('Connected to database');
+            $this->logger->log('Connected to database');
         } catch (PDOException $e) {
-            $this->logger->error('Database Connection Error: ' . $e->getMessage());
+            $this->logger->log('Database Connection Error: ' . $e->getMessage());
             throw new Exception('Database Connection Error: ' . $e->getMessage());
         }
     }

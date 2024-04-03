@@ -15,9 +15,10 @@ class Dispatcher
         $this->container = $container;
     }
 
-    public function addMiddleware(MiddlewareInterface $middleware)
+    public function addMiddleware(string $middlewareClass)
     {
-        $this->middlewares[] = $middleware;
+        $middlewareInstance = $this->container->make($middlewareClass);
+        $this->middlewares[] = $middlewareInstance;
         return $this; // 支持链式调用
     }
 
@@ -33,6 +34,9 @@ class Dispatcher
 
     protected function handleRequest()
     {
+        // 获取路由信息
+        $parsedRoute = $this->routes;
+
         if (!empty($parsedRoute['is_static'])) {
             // 这是一个静态文件请求，直接返回文件内容
             header('Content-Type: ' . mime_content_type($parsedRoute['file_path']));
@@ -40,34 +44,37 @@ class Dispatcher
             exit;
         }
 
-        // If it's a closure, execute the closure and exit
-        if ($this->routes['is_closure']) {
-            $closure = $this->routes['closure'];
+        // 如果路由是闭包，则直接执行闭包并退出
+        if ($parsedRoute['is_closure']) {
+            $closure = $parsedRoute['closure'];
             if (is_callable($closure)) {
-                $closure(); // Execute the closure
-                exit(); // Exit after executing the closure
+                $closure(); // 执行闭包
+                exit(); // 执行完闭包后退出
             }
-        } else if (in_array('404', $this->routes)) {
+        } elseif (in_array('404', $this->routes)) {
+            // 如果路由不存在，则返回 404
             header('HTTP/1.1 404 Not Found');
             exit('404 Not Found');
         } else {
-            // If it's not a closure, continue with middleware and route handler execution
+            // 如果路由不是闭包且不是 404，则继续执行中间件和路由处理器
             $this->executeMiddlewares(function () {
                 $this->executeRouteHandler();
             });
-            exit(); // Exit after executing the route handler
+            exit(); // 执行完路由处理器后退出
         }
     }
 
     protected function executeMiddlewares($finalHandler)
     {
+        // 如果没有中间件，则直接执行最终处理器
         if (empty($this->middlewares)) {
             $finalHandler();
             return;
         }
+
         // 构建中间件执行链
         $next = $finalHandler;
-        foreach (array_reverse($this->middlewares) as $middleware) {
+        foreach ($this->middlewares as $middleware) {
             $next = function () use ($middleware, $next) {
                 return $middleware->handle($next);
             };
@@ -110,7 +117,16 @@ class Dispatcher
 
     protected function handleError($exception)
     {
+        // 设置 HTTP 状态码为 500
         header('HTTP/1.1 500 Internal Server Error');
-        exit('Internal Server Error: ' . $exception->getMessage());
+
+        // 输出详细的错误信息
+        echo 'Internal Server Error: ' . $exception->getMessage() . '<br>';
+        echo 'File: ' . $exception->getFile() . '<br>';
+        echo 'Line: ' . $exception->getLine() . '<br>';
+        echo 'Trace: <pre>' . $exception->getTraceAsString() . '</pre>';
+
+        // 退出脚本执行
+        exit();
     }
 }
