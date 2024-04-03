@@ -46,6 +46,7 @@ class SqlService
             $password = $dsnConfig['password'];
             $port = $dsnConfig['port'];
             $options = $dsnConfig['options'];
+            $this->prefix = $dsnConfig['prefix'];
 
             switch ($driver) {
                 case 'mysql':
@@ -60,7 +61,7 @@ class SqlService
                 default:
                     throw new Exception("Unsupported database driver: $driver");
             }
-            $this->prefix = $dsnConfig['prefix'];
+
             $this->pdo = new PDO($dsn, $username, $password, $options);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -69,6 +70,23 @@ class SqlService
             $this->logger->log('Database Connection Error: ' . $e->getMessage(), $this->logprefix[1]);
             throw new Exception('Database Connection Error: ' . $e->getMessage());
         }
+    }
+    /**
+     * 获取表前缀
+     *
+     * @return string 表前缀
+     */
+    public function getPrefix()
+    {
+        return $this->prefix;
+    }
+
+    protected function handleException(PDOException $e, $opt): void
+    {
+        // 这里可以添加异常处理逻辑，比如记录日志等
+        $this->logger->log('SQL Error: ' . $opt . $e->getMessage(), $this->logprefix[1]);
+        // throw $e; // 或者重新抛出异常
+        throw new Exception($opt . $e->getMessage());
     }
 
     /**
@@ -88,8 +106,7 @@ class SqlService
             $this->join = ''; // 重置连接条件
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            $this->looger->log('SQL Query Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('SQL Query Error: ' . $e->getMessage());
+            $this->handleException($e, 'Query Error');
         }
     }
 
@@ -106,23 +123,18 @@ class SqlService
     public function select($table, $columns = ['*'], $condition = '', $params = [])
     {
         $columnsStr = implode(', ', $columns);
-        $table = $this->prefix . $table;
         $sql = "SELECT $columnsStr FROM $table";
 
         if (!empty($condition)) {
             $sql .= " WHERE $condition";
         }
-
         $this->logger->log('SQL Select: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
-
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            // 记录查询错误日志
-            $this->logger->log('SQL Select Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('SQL Select Error: ' . $e->getMessage());
+            $this->handleException($e, 'SQL Select Error:' . $sql);
         }
     }
 
@@ -139,7 +151,6 @@ class SqlService
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
 
-        $table = $this->prefix . $table;
         $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
         $this->logger->log('Insert Sql: [' . $sql . ' Data: ' . json_encode($data) . ']', $this->logprefix[0]);
         try {
@@ -147,9 +158,7 @@ class SqlService
             $stmt->execute(array_values($data));
             return $this;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Insert Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Insert Error: ' . $e->getMessage());
+            $this->handleException($e, 'Insert Error:' . $sql);
         }
     }
 
@@ -171,7 +180,6 @@ class SqlService
             $params[] = $value;
         }
 
-        $table = $this->prefix . $table;
         $sql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $condition";
         $this->logger->log('Update Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
@@ -179,9 +187,7 @@ class SqlService
             $stmt->execute($params);
             return $this;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Update Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Update Error: ' . $e->getMessage());
+            $this->handleException($e, 'Update Error:' . $sql);
         }
     }
 
@@ -196,7 +202,6 @@ class SqlService
      */
     public function delete($table, $condition, $params = [])
     {
-        $table = $this->prefix . $table;
         $sql = "DELETE FROM $table WHERE $condition";
         $this->logger->log('Delete Sql: [' . $sql . ' Params: ' . json_encode($params) . ']', $this->logprefix[0]);
         try {
@@ -204,9 +209,7 @@ class SqlService
             $stmt->execute($params);
             return $this;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Delete Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Delete Error: ' . $e->getMessage());
+            $this->handleException($e, 'Delete Error:' . $sql);
         }
     }
 
@@ -229,8 +232,7 @@ class SqlService
             return $this;
         } catch (PDOException $e) {
             // 记录执行错误日志
-            $this->logger->log('SQL Execution Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('SQL Execution Error: ' . $e->getMessage());
+            $this->handleException($e, 'Execution Error:' . $sql);
         }
     }
 
@@ -250,9 +252,7 @@ class SqlService
             $stmt->execute($params);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            // 记录查询错误日志
-            $this->logger->log('SQL Fetch Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('SQL Fetch Error: ' . $e->getMessage());
+            $this->handleException($e, 'Fetch Error:' . $sql);
         }
     }
 
@@ -273,9 +273,7 @@ class SqlService
             $this->result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             return $this;
         } catch (PDOException $e) {
-            // 记录查询错误日志
-            $this->logger->log('SQL Fetch Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('SQL Fetch Error: ' . $e->getMessage());
+            $this->handleException($e, 'FetchAll Error:' . $sql);
         }
     }
 
@@ -410,8 +408,7 @@ class SqlService
             try {
                 $stmt->bindValue($paramName, $value, $paramType);
             } catch (PDOException $e) {
-                $this->log('Parameter Binding Error: ' . $e->getMessage(), $this->logprefix[1]);
-                throw new Exception('Parameter Binding Error: ' . $e->getMessage());
+                $this->handleException($e, 'Parameter Binding Error:' . $sql);
             }
         }
     }
@@ -454,9 +451,7 @@ class SqlService
         $values = implode(', ', array_fill(0, count($data), $placeholders));
 
         $sql = "INSERT INTO $table ($columns) VALUES $values";
-
         $this->logger->log('Batch Insert: [' . $sql . ' Params: ' . json_encode($data) . ']', $this->logprefix[0]);
-
         try {
             $stmt = $this->pdo->prepare($sql);
             // 执行多次插入
@@ -465,9 +460,7 @@ class SqlService
             }
             return $this;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Batch Insert Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Batch Insert Error: ' . $e->getMessage());
+            $this->handleException($e, 'Batch Insert  Error:' . $sql);
         }
     }
 
@@ -503,9 +496,7 @@ class SqlService
             }
             return $this;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Batch Update Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Batch Update Error: ' . $e->getMessage());
+            $this->handleException($e, 'Batch Update  Error:' . $sql);
         }
     }
 
@@ -527,9 +518,7 @@ class SqlService
             $stmt->execute($params);
             return $this;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Batch Delete Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Batch Delete Error: ' . $e->getMessage());
+            $this->handleException($e, 'Batch Delete  Error:' . $sql);
         }
     }
 
@@ -555,9 +544,7 @@ class SqlService
             $this->pdo->exec($sql);
             return true;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Create Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Create Table Error: ' . $e->getMessage());
+            $this->handleException($e, 'Create Table  Error:' . $sql);
         }
     }
 
@@ -576,9 +563,7 @@ class SqlService
             $this->pdo->exec($sql);
             return true;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Truncate Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Truncate Table Error: ' . $e->getMessage());
+            $this->handleException($e, 'Truncate Table  Error:' . $sql);
         }
     }
 
@@ -597,9 +582,7 @@ class SqlService
             $this->pdo->exec($sql);
             return true;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Drop Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Drop Table Error: ' . $e->getMessage());
+            $this->handleException($e, 'Drop Table  Error:' . $sql);
         }
     }
 
@@ -624,9 +607,7 @@ class SqlService
             $this->pdo->exec($sql);
             return true;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Alter Table Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Alter Table Error: ' . $e->getMessage());
+            $this->handleException($e, 'Alter Table  Error:' . $sql);
         }
     }
 
@@ -664,9 +645,7 @@ class SqlService
             file_put_contents($filePath, $output);
             return true;
         } catch (Exception $e) {
-            // 记录错误日志
-            $this->logger->log('Export SQL Error: ' . $e->getMessage(), $this->logprefix[1]);
-            throw new Exception('Export SQL Error: ' . $e->getMessage());
+            $this->handleException($e, 'Export SQL  Error:' . $sql);
         }
     }
 
@@ -699,20 +678,17 @@ class SqlService
                         $this->importSingleSqlFile($sqlFile);
                     }
                 }
-
                 // 删除临时目录
                 $this->deleteDirectory($tempDir);
-
                 return true;
             } else {
-                throw new Exception('Failed to open the ZIP file');
+                $this->handleException($e, 'Failed to open the ZIP file');
             }
         } elseif ($extension === 'sql') {
             // 如果是 SQL 文件，则直接导入
             return $this->importSingleSqlFile($filePath);
         } else {
-            $this->logger->log('Unsupported file format', $this->logprefix[1]);
-            throw new Exception('Unsupported file format');
+            $this->handleException($e, 'Unsupported file format:' . $filePath);
         }
     }
 
@@ -731,9 +707,7 @@ class SqlService
             $this->pdo->exec($sql);
             return true;
         } catch (PDOException $e) {
-            // 记录错误日志
-            $this->logger->log('Import SQL Error: ' . $e->getMessage() . ' [SQL: ' . $sql . ']', $this->logprefix[1]);
-            throw new Exception('Import SQL Error: ' . $e->getMessage());
+            $this->handleException($e, 'Import SQL Error:' . $sql);
         }
     }
 
@@ -758,7 +732,5 @@ class SqlService
             }
         }
         rmdir($directory);
-
     }
-
 }

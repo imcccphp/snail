@@ -3,113 +3,132 @@
 namespace Imccc\Snail\Mvc;
 
 use Imccc\Snail\Core\Container;
+use PDOException;
 
 class Model
 {
+    protected $container;
     protected $sqlService;
+    protected $logger;
     protected $table;
     protected $conditions = [];
     protected $fields = ['*'];
+    protected $prefix;
+    protected $softDeletes = true; // 假设默认开启软删除
 
     public function __construct(Container $container)
     {
         $this->container = $container;
-        // 从容器中解析 SqlService 对象
         $this->sqlService = $container->resolve('SqlService');
+        $this->logger = $container->resolve('LoggerService');
+        $this->prefix = $this->sqlService->getPrefix();
     }
 
-    /**
-     * 设置要操作的表名
-     *
-     * @param string $table 表名
-     * @return $this
-     */
-    public function setModel($table)
+    public function withSoftDeletes(bool $enabled = true): self
     {
-        $this->table = $table;
+        $this->softDeletes = $enabled;
         return $this;
     }
 
-    /**
-     * 设置查询条件
-     *
-     * @param array $conditions 查询条件
-     * @return $this
-     */
-    public function where($conditions)
+    public function setModel(string $table): self
+    {
+        $this->table = $this->prefix . $table;
+        return $this;
+    }
+
+    public function where(array $conditions): self
     {
         $this->conditions = $conditions;
         return $this;
     }
 
-    /**
-     * 设置返回的字段列表
-     *
-     * @param array $fields 返回的字段列表
-     * @return $this
-     */
-    public function select($fields)
+    public function select(array $fields): self
     {
         $this->fields = $fields;
         return $this;
     }
 
-    /**
-     * 根据条件查询数据
-     *
-     * @return array 查询结果数组
-     */
-    public function find()
+    public function find(): array
     {
-        return $this->sqlService->select($this->table, $this->fields, $this->conditions);
-    }
+        // 如果启用了软删除，自动添加条件
+        if ($this->softDeletes) {
+            $this->conditions['deleted_at'] = null;
+        }
 
-    /**
-     * 插入数据
-     *
-     * @param array $data 要插入的数据
-     * @return bool 插入是否成功
-     */
-    public function insert($data)
-    {
-        return $this->sqlService->insert($this->table, $data);
-    }
-
-    /**
-     * 更新数据
-     *
-     * @param array $data 要更新的数据
-     * @return bool 更新是否成功
-     */
-    public function update($data)
-    {
-        return $this->sqlService->update($this->table, $data, $this->conditions);
-    }
-
-    /**
-     * 删除数据
-     *
-     * @return bool 删除是否成功
-     */
-    public function delete()
-    {
-        return $this->sqlService->delete($this->table, $this->conditions);
-    }
-
-    // 支持链式调用
-    public function __call($name, $arguments)
-    {
-        if (in_array($name, ['find', 'insert', 'update', 'delete'])) {
-            $result = $this->$name();
+        try {
+            $result = $this->sqlService->select($this->table, $this->fields, $this->conditions);
             $this->reset();
-            return $result;
+            return $result ?: [];
+        } catch (PDOException $e) {
+            // 处理异常或记录日志
+            $this->handleException($e);
+            return [];
         }
     }
 
-    // 重置属性
-    protected function reset()
+    public function insert(array $data): bool
     {
-        $this->table = null;
+        $this->beforeSave();
+        try {
+            $result = $this->sqlService->insert($this->table, $data);
+            $this->afterSave();
+            return $result;
+        } catch (PDOException $e) {
+            $this->handleException($e);
+            return false;
+        }
+    }
+
+    public function update(array $data): bool
+    {
+        $this->beforeSave();
+        try {
+            $result = $this->sqlService->update($this->table, $data, $this->conditions);
+            $this->afterSave();
+            return $result;
+        } catch (PDOException $e) {
+            $this->handleException($e);
+            return false;
+        }
+    }
+
+    public function delete(): bool
+    {
+        if ($this->softDeletes) {
+            // 实现软删除
+            return $this->update(['deleted_at' => date('Y-m-d H:i:s')]);
+        }
+
+        try {
+            $result = $this->sqlService->delete($this->table, $this->conditions);
+            $this->reset();
+            return $result;
+        } catch (PDOException $e) {
+            $this->handleException($e);
+            return false;
+        }
+    }
+
+    protected function beforeSave(): void
+    {
+        // 自定义逻辑，比如清理、验证等
+    }
+
+    protected function afterSave(): void
+    {
+        // 自定义逻辑，比如清理缓存、发送通知等
+    }
+
+    protected function handleException(PDOException $e): void
+    {
+        // 这里可以添加异常处理逻辑，比如记录日志等
+        $this->logger->log('SQL Error: ' . $e->getMessage());
+        // throw $e; // 或者重新抛出异常
+        throw $e;
+    }
+
+    protected function reset(): void
+    {
         $this->conditions = [];
         $this->fields = ['*'];
     }

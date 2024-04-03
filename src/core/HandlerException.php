@@ -52,7 +52,7 @@ class HandlerException
         echo '<h3 style="color: red; background-color: #eee; margin:0;padding: 10px;"> Snail Debug <small> - ' . $_SERVER['HTTP_HOST'] . '</small><span style="float:right;">#' . self::$errorCount . '</span></h3>';
         echo '<div style="padding: 10px;">';
 
-        if (DEBUG) {
+        if (DEBUG ?? false) {
             self::showDetailedError($exception);
         } else {
             echo '<h1>Oops, something went wrong!</h1>';
@@ -85,11 +85,11 @@ class HandlerException
         return count($parts) > 1 ? (int) trim($parts[1]) : 0;
     }
 
-/**
- * 格式化堆栈信息
- * @param array $trace
- * @return string
- */
+    /**
+     * 格式化堆栈信息
+     * @param array $trace
+     * @return string
+     */
     private static function formatStackTrace(array $trace): string
     {
         $formattedTrace = '';

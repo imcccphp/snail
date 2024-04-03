@@ -35,12 +35,11 @@ class Snail
      */
     public function run()
     {
-        set_error_handler([HandlerException::class, 'handleException']);
-        $d = new Router();
-
-        $this->router = $d->getRouteInfo();
-        $dispatch = new Dispatcher($this->container, $this->router);
-        $dispatch->dispatch();
+        set_error_handler([HandlerException::class, 'handleException']); // 注册全局异常处理函数
+        $d = new Router(); //初始化路由
+        $this->router = $d->getRouteInfo(); //获取路由信息
+        $dispatch = new Dispatcher($this->container, $this->router); //初始化分发器
+        $dispatch->dispatch(); //分发
     }
 
     /**
@@ -59,8 +58,10 @@ class Snail
             return new SqlService($this->container);
         });
 
+        // 配置服务
         $config = $this->container->resolve('ConfigService');
 
+        // 配置
         $this->config = $config->get('snail.on');
 
         // 注册日志服务
@@ -70,6 +71,7 @@ class Snail
             });
         }
 
+        // 日志服务
         $this->logger = $this->container->resolve('LoggerService');
 
     }
