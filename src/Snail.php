@@ -24,6 +24,8 @@ class Snail
 
     public function __construct()
     {
+        // 配置
+        $this->config = Config::get('snail.on');
         $this->initializeContainer();
         $this->run();
     }
@@ -33,6 +35,8 @@ class Snail
      */
     public function run()
     {
+        // 配置
+        $this->config = Config::get('snail.on');
         set_error_handler([HandlerException::class, 'handleException']); // 注册全局异常处理函数
         $d = new Router(); //初始化路由
         $this->router = $d->getRouteInfo(); //获取路由信息
@@ -46,19 +50,6 @@ class Snail
     protected function initializeContainer()
     {
         $this->container = Container::getInstance();
-
-        // 配置
-        $this->config = Config::get('snail.on');
-
-        // 注册日志服务
-        if ($this->config['log']) {
-            $this->container->bind('LoggerService', function () {
-                return new LoggerService($this->container);
-            });
-        }
-
-        // 日志服务
-        $this->logger = $this->container->resolve('LoggerService');
 
     }
 
@@ -90,7 +81,6 @@ class Snail
      */
     public function __destruct()
     {
-        $this->logger->log('Snail Run Success');
         if (Defined('START_TIME')) {
             echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS <br>";
         }

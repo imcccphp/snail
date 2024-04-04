@@ -23,10 +23,11 @@ class Controller
      *
      * @param array $routes 路由数组
      */
-    public function __construct(Container $container, $routes)
+    public function __construct($routes)
     {
+
         $this->routes = $routes;
-        $this->container = $container;
+        $this->container = Container::getInstance();
         $this->config = $container->resolve('ConfigService');
         $this->logger = $container->resolve('LoggerService');
         $this->api = $container->resolve('ApiService');
