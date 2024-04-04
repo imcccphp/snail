@@ -10,9 +10,6 @@ use Imccc\Snail\Core\Container;
 use Imccc\Snail\Core\Dispatcher;
 use Imccc\Snail\Core\HandlerException;
 use Imccc\Snail\Core\Router;
-use Imccc\Snail\Services\ConfigService;
-use Imccc\Snail\Services\LoggerService;
-use Imccc\Snail\Services\SqlService;
 
 class Snail
 {
@@ -48,31 +45,31 @@ class Snail
     protected function initializeContainer()
     {
         $this->container = Container::getInstance();
-        // 注册配置服务
-        $this->container->bind('ConfigService', function () {
-            return new ConfigService($this->container);
-        });
+        // // 注册配置服务
+        // $this->container->bind('ConfigService', function () {
+        //     return new ConfigService($this->container);
+        // });
 
-        // 注册SQL服务
-        $this->container->bind('SqlService', function () {
-            return new SqlService($this->container);
-        });
+        // // 注册SQL服务
+        // $this->container->bind('SqlService', function () {
+        //     return new SqlService($this->container);
+        // });
 
-        // 配置服务
-        $config = $this->container->resolve('ConfigService');
+        // // 配置服务
+        // $config = $this->container->resolve('ConfigService');
 
-        // 配置
-        $this->config = $config->get('snail.on');
+        // // 配置
+        // $this->config = $config->get('snail.on');
 
-        // 注册日志服务
-        if ($this->config['log']) {
-            $this->container->bind('LoggerService', function () {
-                return new LoggerService($this->container);
-            });
-        }
+        // // 注册日志服务
+        // if ($this->config['log']) {
+        //     $this->container->bind('LoggerService', function () {
+        //         return new LoggerService($this->container);
+        //     });
+        // }
 
-        // 日志服务
-        $this->logger = $this->container->resolve('LoggerService');
+        // // 日志服务
+        // $this->logger = $this->container->resolve('LoggerService');
 
     }
 
