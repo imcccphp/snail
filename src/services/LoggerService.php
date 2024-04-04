@@ -2,6 +2,7 @@
 namespace Imccc\Snail\Services;
 
 use Exception;
+use Imccc\Snail\Core\Config;
 use Imccc\Snail\Core\Container;
 
 class LoggerService
@@ -14,9 +15,8 @@ class LoggerService
     public function __construct()
     {
         $this->container = Container::getInstance();
-
         // 解析配置服务并获取日志配置信息
-        $this->config = $this->container->resolve('ConfigService')->get('logger');
+        $this->config = Config::get('logger');
 
         // 注册一个脚本结束时的回调，用于处理日志队列中剩余的日志
         register_shutdown_function([$this, 'flushLogs']);

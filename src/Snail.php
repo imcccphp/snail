@@ -6,6 +6,7 @@ namespace Imccc\Snail;
 defined('CONFIG_PATH') || define('CONFIG_PATH', dirname(__DIR__) . '/src/limbs/config');
 defined('CFG_EXT') || define('CFG_EXT', '.conf.php');
 
+use Imccc\Snail\Core\Config;
 use Imccc\Snail\Core\Container;
 use Imccc\Snail\Core\Dispatcher;
 use Imccc\Snail\Core\HandlerException;
@@ -45,21 +46,9 @@ class Snail
     protected function initializeContainer()
     {
         $this->container = Container::getInstance();
-        // // 注册配置服务
-        // $this->container->bind('ConfigService', function () {
-        //     return new ConfigService($this->container);
-        // });
 
-        // // 注册SQL服务
-        // $this->container->bind('SqlService', function () {
-        //     return new SqlService($this->container);
-        // });
-
-        // // 配置服务
-        // $config = $this->container->resolve('ConfigService');
-
-        // // 配置
-        // $this->config = $config->get('snail.on');
+        // 配置
+        $this->config = Config::get('snail.on');
 
         // 注册日志服务
         if ($this->config['log']) {
@@ -80,6 +69,7 @@ class Snail
     {
         // 获取所有已经注册的服务
         $bindings = $this->container->getBindings();
+        echo "-------------------------<br>";
         // 遍历输出每个服务的信息
         foreach ($bindings as $serviceName => $binding) {
             echo "Service Name: $serviceName<br>";
@@ -102,7 +92,7 @@ class Snail
     {
         $this->logger->log('Snail Run Success');
         if (Defined('START_TIME')) {
-            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS";
+            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS <br>";
         }
         if ($this->config['container']) {
             $this->getServices();
