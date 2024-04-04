@@ -61,15 +61,15 @@ class Snail
         // // 配置
         // $this->config = $config->get('snail.on');
 
-        // // 注册日志服务
-        // if ($this->config['log']) {
-        //     $this->container->bind('LoggerService', function () {
-        //         return new LoggerService($this->container);
-        //     });
-        // }
+        // 注册日志服务
+        if ($this->config['log']) {
+            $this->container->bind('LoggerService', function () {
+                return new LoggerService($this->container);
+            });
+        }
 
-        // // 日志服务
-        // $this->logger = $this->container->resolve('LoggerService');
+        // 日志服务
+        $this->logger = $this->container->resolve('LoggerService');
 
     }
 

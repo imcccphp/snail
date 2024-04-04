@@ -11,9 +11,10 @@ class LoggerService
     private $config; // 日志配置
     private $container; // 容器
 
-    public function __construct(Container $container)
+    public function __construct()
     {
-        $this->container = $container;
+        $this->container = Container::getInstance();
+
         // 解析配置服务并获取日志配置信息
         $this->config = $this->container->resolve('ConfigService')->get('logger');
 
