@@ -14,11 +14,11 @@
 
 namespace Imccc\Snail\Core;
 
-use Imccc\Snail\Core\Container;
+use Imccc\Snail\Core\Config;
 
 class Router
 {
-    protected $container;
+    protected $config;
     private $routes = []; // 路由表
     private $parsedRoute = []; // 解析后的路由信息
     private $def = [];
@@ -28,13 +28,13 @@ class Router
         ':num' => '[0-9]+',
         ':all' => '.*',
     );
+
     protected $methods = array('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD');
     protected $middleware = [];
     protected $supportedSuffixes = ['.do', '.html', '.snail'];
 
-    public function __construct(Container $container, $routes = null)
+    public function __construct($routes = null)
     {
-        $this->container = $container;
         $this->loadRoutes($routes);
         $this->match();
     }
@@ -48,9 +48,9 @@ class Router
         if ($routes !== null) {
             $this->routes = $routes;
         } else {
-            $this->routes = $this->container->get('route'); // 从配置文件加载路由表
+            $this->routes = Config::get('route'); // 从配置文件加载路由表
         }
-        $this->def = $this->container->get('def');
+        $this->def = Config::get('def');
     }
 
     /**

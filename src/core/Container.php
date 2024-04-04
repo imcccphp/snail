@@ -102,15 +102,19 @@ class Container
         // 如果服务未注册，则尝试根据预定义的规则自动注册
         if (!isset($this->bindings[$abstract])) {
             $this->attemptAutoRegister($abstract);
+            // 如果仍然未注册，则抛出异常
+            if (!isset($this->bindings[$abstract])) {
+                throw new Exception("Service '$abstract' not found.");
+            }
+
+        }
+        if ($abstract === 'Container' || $abstract === 'Imccc\Snail\Core\Container') {
+            return;
+        } else {
+            // 返回服务实例
+            return $this->make($abstract);
         }
 
-        // 如果仍然未注册，则抛出异常
-        if (!isset($this->bindings[$abstract])) {
-            throw new Exception("Service '$abstract' not found.");
-        }
-
-        // 返回服务实例
-        return $this->make($abstract);
     }
 
     /**
@@ -128,19 +132,20 @@ class Container
         $interfaceFile = $servicePath . '/' . $abstract . 'Interface.php'; // 接口文件路径
         $serviceFile = $servicePath . '/' . $abstract . '.php'; // 实体类文件路径
 
-        // 如果存在接口文件，则尝试注册对应的实体类
         if (file_exists($interfaceFile)) {
             $concreteClass = $abstract;
             if (class_exists($concreteClass)) {
                 $this->bind($abstract, $concreteClass);
                 // 添加别名，以不带命名空间的服务名为准
-                $this->alias(basename($abstract), $abstract);
+                $this->alias(basename($abstract), $serviceNamespace . '\\' . $abstract);
             } else {
                 // 如果实体类不存在，则抛出异常
                 throw new Exception("Automatic registration failed for service: $abstract. Class $concreteClass does not exist.");
             }
         } elseif (file_exists($serviceFile)) {
             // 如果不存在接口文件但存在实体类文件，则直接将服务文件视为实体类注册
+            // $this->bind($abstract, $serviceNamespace . '\\' . $abstract);
+
             $this->bind($abstract, $serviceNamespace . '\\' . $abstract);
             // 添加别名，以不带命名空间的服务名为准
             $this->alias(basename($abstract), $abstract);
@@ -148,6 +153,7 @@ class Container
             // 如果都不存在，则抛出异常
             throw new Exception("Automatic registration failed for service: $abstract. Neither interface nor service class found.");
         }
+
     }
 
     /**
@@ -167,9 +173,14 @@ class Container
         // 获取绑定信息
         $binding = $this->bindings[$abstract];
 
-        // 如果是共享实例且已经存在，则直接返回
-        if ($binding['shared'] && $binding['instance'] !== null) {
-            return $binding['instance'];
+        // 检查是否存在共享实例，如果存在且是共享实例，则直接返回
+        $instance = ($binding['shared'] && $binding['instance'] !== null)
+        ? $binding['instance']
+        : null;
+
+        // 如果已经存在实例，则直接返回该实例
+        if ($instance === null && isset($this->instances[$abstract])) {
+            return $this->instances[$abstract];
         }
 
         // 解析依赖并创建实例
@@ -179,6 +190,11 @@ class Container
         // 如果是共享实例，则保存到 bindings 中
         if ($binding['shared']) {
             $this->bindings[$abstract]['instance'] = $instance;
+        }
+
+        // 如果不是共享实例，则保存到 instances 中
+        if (!$binding['shared']) {
+            $this->instances[$abstract] = $instance;
         }
 
         return $instance;
