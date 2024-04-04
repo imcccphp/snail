@@ -123,14 +123,15 @@ class Container
     {
         // 假设约定接口后缀为 Interface，则自动注册时可以这样处理
         $serviceNamespace = 'Imccc\Snail\Services'; // 假设服务类的命名空间
-        $servicePath = dirname(__DIR__) . '/' . str_replace('\\', '/', $serviceNamespace); // 服务类所在的目录
+        $servicePath = dirname(__DIR__) . '/services'; // 服务类所在的目录
 
         $interfaceFile = $servicePath . '/' . $abstract . 'Interface.php'; // 接口文件路径
-        $serviceFile = $servicePath . '/' . $abstract . 'Service.php'; // 实体类文件路径
-
+        $serviceFile = $servicePath . '/' . $abstract . '.php'; // 实体类文件路径
+        // echo $interfaceFile;die;
+        // echo $serviceFile;die;
         // 如果存在接口文件，则尝试注册对应的实体类
         if (file_exists($interfaceFile)) {
-            $concreteClass = $abstract . 'Service';
+            $concreteClass = $abstract;
             if (class_exists($concreteClass)) {
                 $this->bind($abstract, $concreteClass);
             } else {
@@ -139,7 +140,7 @@ class Container
             }
         } elseif (file_exists($serviceFile)) {
             // 如果不存在接口文件但存在实体类文件，则直接将服务文件视为实体类注册
-            $this->bind($abstract, $serviceNamespace . '\\' . $abstract . 'Service');
+            $this->bind($abstract, $serviceNamespace . '\\' . $abstract);
         } else {
             // 如果都不存在，则抛出异常
             throw new Exception("Automatic registration failed for service: $abstract. Neither interface nor service class found.");
