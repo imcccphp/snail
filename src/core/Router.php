@@ -14,10 +14,11 @@
 
 namespace Imccc\Snail\Core;
 
-use Imccc\Snail\Core\Config;
+use Imccc\Snail\Core\Container;
 
 class Router
 {
+    protected $container;
     private $routes = []; // 路由表
     private $parsedRoute = []; // 解析后的路由信息
     private $def = [];
@@ -31,8 +32,9 @@ class Router
     protected $middleware = [];
     protected $supportedSuffixes = ['.do', '.html', '.snail'];
 
-    public function __construct($routes = null)
+    public function __construct(Container $container, $routes = null)
     {
+        $this->container = $container;
         $this->loadRoutes($routes);
         $this->match();
     }
@@ -46,9 +48,9 @@ class Router
         if ($routes !== null) {
             $this->routes = $routes;
         } else {
-            $this->routes = Config::get('route'); // 从配置文件加载路由表
+            $this->routes = $this->container->get('route'); // 从配置文件加载路由表
         }
-        $this->def = Config::get('def');
+        $this->def = $this->container->get('def');
     }
 
     /**
@@ -258,9 +260,3 @@ class Router
         return $this->parsedRoute;
     }
 }
-/**
- * 发视频时间
-6-8
-15-18
-20.30-21.30
- */
