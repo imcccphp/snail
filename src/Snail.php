@@ -77,6 +77,28 @@ class Snail
     }
 
     /**
+     * 获取服务
+     */
+    public function getServices()
+    {
+        // 获取所有已经注册的服务
+        $bindings = $this->container->getBindings();
+        // 遍历输出每个服务的信息
+        foreach ($bindings as $serviceName => $binding) {
+            echo "Service Name: $serviceName<br>";
+            // 检查具体实现类是否为闭包
+            if ($binding['concrete'] instanceof Closure) {
+                echo "Concrete: Closure<br>";
+            } else {
+                echo "Concrete: " . (is_object($binding['concrete']) ? get_class($binding['concrete']) : $binding['concrete']) . "<br>";
+            }
+            echo "Shared: " . ($binding['shared'] ? 'Yes' : 'No') . "<br>";
+            echo "-------------------------<br>";
+        }
+
+    }
+
+    /**
      * 销毁
      */
     public function __destruct()
@@ -85,6 +107,10 @@ class Snail
         if (Defined('START_TIME')) {
             echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS";
         }
+        if ($this->config['container']) {
+            $this->container->getServices();
+        }
+
     }
 
 }

@@ -9,5 +9,6 @@ return [
         'session' => true, // 开启Session
         'csrf' => true, // 开启CSRF保护
         'auth' => true, // 开启权限验证
+        'container' => true, // 开户容器调试
     ],
 ];

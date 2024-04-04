@@ -32,31 +32,8 @@ class Controller
         $this->api = $container->resolve('ApiService');
         $this->_view = new View($this->container);
         $this->_model = new Model($this->container);
-        $this->getServices();
     }
 
-    /**
-     * 获取服务
-     */
-    public function getServices()
-    {
-        // 获取所有已经注册的服务
-        $bindings = $this->container->getBindings();
-        // 遍历输出每个服务的信息
-        foreach ($bindings as $serviceName => $binding) {
-            echo "Service Name: $serviceName\n";
-
-            // 检查具体实现类是否为闭包
-            if ($binding['concrete'] instanceof Closure) {
-                echo "Concrete: Closure\r\n";
-            } else {
-                echo "Concrete: " . (is_object($binding['concrete']) ? get_class($binding['concrete']) : $binding['concrete']) . "\n";
-            }
-            echo "Shared: " . ($binding['shared'] ? 'Yes' : 'No') . "\r\n";
-            echo "-------------------------\r\n";
-        }
-
-    }
     /**
      * 注册服务
      *
