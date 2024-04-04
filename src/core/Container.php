@@ -18,8 +18,8 @@ class Container
 {
     private static $instance;
 
-    protected $bindings = []; // 绑定列表
-    protected $aliases = []; // 别名列表
+    protected $bindings = []; // 存储绑定的服务信息
+    protected $aliases = []; // 存储服务别名信息
     protected $lastBound = ''; // 最后绑定的接口或抽象类
 
     // 获取容器实例的静态方法
@@ -31,7 +31,7 @@ class Container
         return self::$instance;
     }
 
-// 私有构造函数以确保只能通过 getInstance 方法获取实例
+    // 私有构造函数以确保只能通过 getInstance 方法获取实例
     private function __construct()
     {
     }
@@ -45,8 +45,10 @@ class Container
     private function __wakeup()
     {
     }
+
     /**
      * 获取所有服务
+     *
      * @return array 所有服务
      */
     public function getBindings()
@@ -60,7 +62,7 @@ class Container
      * @param string $abstract 接口或抽象类名
      * @param mixed $concrete 具体实现类名、闭包或实例
      * @param bool $shared 是否共享实例
-     * @return $this 当前容器实例
+     * @return Container 当前容器实例
      * @throws Exception 如果提供的具体实现类类型无效
      */
     public function bind(string $abstract, $concrete = null, bool $shared = false): self
@@ -84,102 +86,6 @@ class Container
     }
 
     /**
-     * 绑定参数到容器
-     *
-     * @param string $key 参数名称
-     * @param mixed $value 参数值
-     * @return $this 当前容器实例
-     */
-    public function bindParameter(string $key, $value): self
-    {
-        $this->bindings[$key] = [
-            'concrete' => $value,
-            'shared' => true,
-            'instance' => $value,
-        ];
-
-        return $this;
-    }
-
-    /**
-     * 定义服务别名
-     *
-     * @param string $alias 别名
-     * @param string $serviceName 服务名称
-     * @return $this 当前容器实例
-     */
-    public function alias(string $alias, string $serviceName): self
-    {
-        $this->aliases[$alias] = $serviceName;
-        return $this;
-    }
-
-    /**
-     * 自动注册服务
-     *
-     * @param string $serviceNamespace 服务类所在的命名空间
-     * @param string $interfaceNamespace 接口或抽象类所在的命名空间
-     * @param string $interfaceSuffix 具体实现类的后缀（可选，默认为 'Interface'）
-     * @return $this 当前容器实例
-     * @throws Exception 如果自动注册失败时抛出异常
-     */
-    public function autoRegister(string $serviceNamespace, string $interfaceNamespace, string $interfaceSuffix = 'Interface')
-    {
-        // 获取指定命名空间下的所有类
-        $servicePath = dirname(__DIR__) . '/' . str_replace('\\', '/', $serviceNamespace);
-        $services = glob($servicePath . '/*.php');
-
-        foreach ($services as $service) {
-            $className = basename($service, '.php');
-            $fullClassName = $serviceNamespace . '\\' . $className;
-
-            // 检查类是否符合特定条件
-            if (!$this->isAbstractOrTrait($fullClassName) && !$this->isInterface($fullClassName, $interfaceSuffix)) {
-                // 构造服务名称和接口名称
-                $serviceName = $serviceNamespace . '\\' . $className;
-                $interfaceName = $interfaceNamespace . '\\' . $className . $interfaceSuffix;
-
-                // 检查接口或抽象类是否存在
-                if (!interface_exists($interfaceName) && !class_exists($interfaceName)) {
-                    throw new Exception("Interface or abstract class '$interfaceName' does not exist.");
-                }
-
-                // 检查类是否已经被绑定
-                if (isset($this->bindings[$interfaceName])) {
-                    throw new Exception("Service '$interfaceName' is already bound.");
-                }
-
-                // 绑定服务
-                $this->bind($interfaceName, $serviceName);
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * 检查类是否为抽象类或特性
-     *
-     * @param string $className 类名
-     * @return bool
-     */
-    protected function isAbstractOrTrait(string $className): bool
-    {
-        return (new ReflectionClass($className))->isAbstract() || (new ReflectionClass($className))->isTrait();
-    }
-
-    /**
-     * 检查类是否为接口类
-     *
-     * @param string $className 类名
-     * @param string $interfaceSuffix 接口类的后缀
-     * @return bool
-     */
-    protected function isInterface(string $className, string $interfaceSuffix): bool
-    {
-        return interface_exists($className . $interfaceSuffix);
-    }
-    /**
      * 获取服务实例，支持别名
      *
      * @param string $abstract 服务名称或别名
@@ -193,35 +99,51 @@ class Container
             $abstract = $this->aliases[$abstract];
         }
 
-        // 如果服务不存在，尝试自动注册服务
+        // 如果服务未注册，则尝试根据预定义的规则自动注册
         if (!isset($this->bindings[$abstract])) {
-            $this->autoRegister('Imccc\Snail\Services', 'Imccc\Snail\Services', 'Service');
-            // $this->autoRegister('Services', 'Services', 'Service');
+            $this->attemptAutoRegister($abstract);
         }
 
-        // 再次检查是否注册成功
+        // 如果仍然未注册，则抛出异常
         if (!isset($this->bindings[$abstract])) {
             throw new Exception("Service '$abstract' not found.");
         }
 
+        // 返回服务实例
         return $this->make($abstract);
     }
 
     /**
-     * 标记服务
+     * 尝试根据预定义规则自动注册服务
      *
-     * @param string $abstract 服务名称
-     * @param string $tag 标记
-     * @return $this 当前容器实例
+     * @param string $abstract 请求的服务名称或接口
+     * @throws Exception 如果自动注册失败
      */
-    public function tag(string $abstract, string $tag): self
+    protected function attemptAutoRegister(string $abstract)
     {
-        if (!isset($this->bindings[$abstract]['tags'])) {
-            $this->bindings[$abstract]['tags'] = [];
-        }
+        // 假设约定接口后缀为 Interface，则自动注册时可以这样处理
+        $serviceNamespace = 'Imccc\Snail\Services'; // 假设服务类的命名空间
+        $servicePath = dirname(__DIR__) . '/' . str_replace('\\', '/', $serviceNamespace); // 服务类所在的目录
 
-        $this->bindings[$abstract]['tags'][] = $tag;
-        return $this;
+        $interfaceFile = $servicePath . '/' . $abstract . 'Interface.php'; // 接口文件路径
+        $serviceFile = $servicePath . '/' . $abstract . 'Service.php'; // 实体类文件路径
+
+        // 如果存在接口文件，则尝试注册对应的实体类
+        if (file_exists($interfaceFile)) {
+            $concreteClass = $abstract . 'Service';
+            if (class_exists($concreteClass)) {
+                $this->bind($abstract, $concreteClass);
+            } else {
+                // 如果实体类不存在，则抛出异常
+                throw new Exception("Automatic registration failed for service: $abstract. Class $concreteClass does not exist.");
+            }
+        } elseif (file_exists($serviceFile)) {
+            // 如果不存在接口文件但存在实体类文件，则直接将服务文件视为实体类注册
+            $this->bind($abstract, $serviceNamespace . '\\' . $abstract . 'Service');
+        } else {
+            // 如果都不存在，则抛出异常
+            throw new Exception("Automatic registration failed for service: $abstract. Neither interface nor service class found.");
+        }
     }
 
     /**
@@ -327,7 +249,7 @@ class Container
      * 验证最后一次绑定的接口或抽象类是否为指定的接口或抽象类
      *
      * @param string $abstract 要验证的接口或抽象类名
-     * @return $this 当前容器实例
+     * @return Container 当前容器实例
      * @throws Exception 当验证失败时抛出异常
      */
     public function for(string $abstract): self
@@ -336,6 +258,36 @@ class Container
             throw new Exception("The last bound service is not '$abstract'.");
         }
 
+        return $this;
+    }
+
+    /**
+     * 定义服务别名
+     *
+     * @param string $alias 别名
+     * @param string $serviceName 服务名称
+     * @return Container 当前容器实例
+     */
+    public function alias(string $alias, string $serviceName): self
+    {
+        $this->aliases[$alias] = $serviceName;
+        return $this;
+    }
+
+    /**
+     * 标记服务
+     *
+     * @param string $abstract 服务名称
+     * @param string $tag 标记
+     * @return Container 当前容器实例
+     */
+    public function tag(string $abstract, string $tag): self
+    {
+        if (!isset($this->bindings[$abstract]['tags'])) {
+            $this->bindings[$abstract]['tags'] = [];
+        }
+
+        $this->bindings[$abstract]['tags'][] = $tag;
         return $this;
     }
 

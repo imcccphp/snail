@@ -11,7 +11,8 @@
         "files": [],
         "classmap": [],
         "psr-4": {
-            "Imccc\\Snail\\": "src/"
+            "Imccc\\Snail\\": "src/",
+            "Imccc\\Snail\\Services\\": "src/services/"
         }
     },
     "authors": [
