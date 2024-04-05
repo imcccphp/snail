@@ -2,6 +2,7 @@
 
 return [
     'on' => [
+        'def' => true,
         'sql' => true,
         'sqlerr' => true,
         'view' => true,
