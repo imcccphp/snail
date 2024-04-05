@@ -99,7 +99,7 @@ class Dispatcher
         }
 
         // 创建控制器对象，并传入路由参数数组
-        $controllerObj = new $controllerClass($this->container, $this->routes);
+        $controllerObj = new $controllerClass($this->routes);
 
         // 检查控制器方法是否存在
         if (!method_exists($controllerObj, $action)) {
