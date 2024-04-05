@@ -40,7 +40,7 @@ class Snail
         set_error_handler([HandlerException::class, 'handleException']); // 注册全局异常处理函数
         $d = new Router(); //初始化路由
         $this->router = $d->getRouteInfo(); //获取路由信息
-        $dispatch = new Dispatcher($this->container, $this->router); //初始化分发器
+        $dispatch = new Dispatcher($this->router); //初始化分发器
         $dispatch->dispatch(); //分发
     }
 
