@@ -18,6 +18,7 @@ class Container
 {
     private static $instance;
 
+    protected $plugins = []; // 存储插件信息
     protected $bindings = []; // 存储绑定的服务信息
     protected $aliases = []; // 存储服务别名信息
     protected $lastBound = ''; // 最后绑定的接口或抽象类
@@ -44,26 +45,6 @@ class Container
     // 反序列化方法私有化，防止外部反序列化对象
     private function __wakeup()
     {
-    }
-
-    /**
-     * 获取所有服务
-     *
-     * @return array 所有服务
-     */
-    public function getBindings()
-    {
-        return $this->bindings;
-    }
-
-    /**
-     * 获取所有服务别名
-     *
-     * @return array 所有服务别名
-     */
-    public function getAliases()
-    {
-        return $this->aliases;
     }
 
     /**
@@ -96,6 +77,16 @@ class Container
     }
 
     /**
+     * 获取所有服务
+     *
+     * @return array 所有服务
+     */
+    public function getBindings()
+    {
+        return $this->bindings;
+    }
+
+    /**
      * 获取服务实例，支持别名
      *
      * @param string $abstract 服务名称或别名
@@ -104,6 +95,10 @@ class Container
      */
     public function resolve(string $abstract)
     {
+        // 如果依赖是容器本身，则跳过解析步骤
+        if ($abstract === self::class) {
+            return $this;
+        }
         // 如果是别名，则转换为对应的服务名称
         if (isset($this->aliases[$abstract])) {
             $abstract = $this->aliases[$abstract];
@@ -250,6 +245,14 @@ class Container
      */
     protected function resolveDependencies(array $parameters): array
     {
+
+        // 如果依赖是自己身份，则直接返回
+        foreach ($parameters as $parameter) {
+            if ($parameter->getName() === 'container' || $parameter->getName() === Container::class) {
+                return [$this];
+            }
+        }
+
         $dependencies = [];
 
         foreach ($parameters as $parameter) {
@@ -301,6 +304,16 @@ class Container
     }
 
     /**
+     * 获取所有服务别名
+     *
+     * @return array 所有服务别名
+     */
+    public function getAliases()
+    {
+        return $this->aliases;
+    }
+
+    /**
      * 标记服务
      *
      * @param string $abstract 服务名称
@@ -315,6 +328,82 @@ class Container
 
         $this->bindings[$abstract]['tags'][] = $tag;
         return $this;
+    }
+
+    /**
+     * 加载插件
+     *
+     * @param array $plugins 插件数组
+     */
+    public function loadPlugins(array $plugins)
+    {
+        foreach ($plugins as $plugin) {
+            $this->registerPlugin($plugin);
+        }
+    }
+
+    /**
+     * 注册插件
+     *
+     * @param PluginInterface $plugin 插件对象
+     */
+    protected function registerPlugin(PluginInterface $plugin)
+    {
+        $plugin->register($this);
+        $this->plugins[] = $plugin;
+    }
+    /**
+     * 加载并处理插件的依赖关系
+     *
+     * @param array $plugins 插件数组
+     */
+    public function loadAndResolvePluginDependencies(array $plugins)
+    {
+        // 遍历所有插件
+        foreach ($plugins as $plugin) {
+            // 获取插件的依赖关系
+            $dependencies = $plugin->getDependencies();
+
+            // 解析并加载插件的依赖项
+            foreach ($dependencies as $dependency) {
+                $this->loadPluginDependency($dependency);
+            }
+
+            // 注册插件
+            $this->registerPlugin($plugin);
+        }
+    }
+
+    /**
+     * 加载并处理单个插件的依赖关系
+     *
+     * @param string $dependency 插件依赖项
+     */
+    protected function loadPluginDependency(string $dependency)
+    {
+        // 根据插件依赖项加载插件
+        // 这里可以根据具体需求实现插件加载逻辑
+        // 例如，通过配置文件、数据库或直接通过容器加载插件
+        // 在这个示例中，假设插件直接通过类名进行加载
+        $pluginInstance = new $dependency();
+
+        // 注册插件
+        $this->registerPlugin($pluginInstance);
+    }
+    
+    /**
+     * 获取插件实例
+     * @param string $name 插件名称
+     * @return PluginInterface|null 插件实例，如果不存在则返回null
+     */
+    public function getPlugin(string $name): ?PluginInterface
+    {
+        foreach ($this->plugins as $plugin) {
+            if ($plugin->getName() === $name) {
+                return $plugin;
+            }
+        }
+        return null;
     }
 
     /**

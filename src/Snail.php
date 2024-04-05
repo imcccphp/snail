@@ -50,7 +50,6 @@ class Snail
     protected function initializeContainer()
     {
         $this->container = Container::getInstance();
-
     }
 
     /**
@@ -89,6 +88,8 @@ class Snail
      */
     public function __destruct()
     {
+        $this->logger = $this->container-resolve('logger');
+        $this->logger->log('Snail Destroyed');
         if (Defined('START_TIME')) {
             echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS <br>";
         }
