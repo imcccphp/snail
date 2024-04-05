@@ -57,6 +57,16 @@ class Container
     }
 
     /**
+     * 获取所有服务别名
+     * 
+     * @return array 所有服务别名
+     */
+    public function getAliases()
+    {
+        return $this->aliases;
+    }
+
+    /**
      * 绑定接口或抽象类到具体实现类
      *
      * @param string $abstract 接口或抽象类名
@@ -143,7 +153,7 @@ class Container
 
             $this->bind($abstract, $serviceNamespace . '\\' . $abstract);
             // 添加别名，以不带命名空间的服务名为准
-            $this->alias(basename($abstract), $serviceNamespace . '\\' . $abstract);
+            $this->alias(basename($abstract), $abstract);
         } else {
             // 如果都不存在，则抛出异常
             throw new Exception("Automatic registration failed for service: $abstract. Neither interface nor service class found.");

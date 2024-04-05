@@ -60,10 +60,18 @@ class Snail
     {
         // 获取所有已经注册的服务
         $bindings = $this->container->getBindings();
+        $alises = $this->container->getAliases();
         echo "-------------------------<br>";
+        
         // 遍历输出每个服务的信息
         foreach ($bindings as $serviceName => $binding) {
-            echo "Service Name: $serviceName<br>";
+            echo "Service Name: $serviceName > ";
+
+            foreach ($alises as $aliasName => $alias) {
+                if ($alias == $serviceName) {
+                    echo "Alias: $aliasName<br>";
+                }
+            }
             // 检查具体实现类是否为闭包
             if ($binding['concrete'] instanceof Closure) {
                 echo "Concrete: Closure<br>";
