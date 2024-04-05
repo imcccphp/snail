@@ -143,7 +143,7 @@ class Container
 
             $this->bind($abstract, $serviceNamespace . '\\' . $abstract);
             // 添加别名，以不带命名空间的服务名为准
-            $this->alias(basename($abstract), $abstract);
+            $this->alias(basename($abstract), $serviceNamespace . '\\' . $abstract);
         } else {
             // 如果都不存在，则抛出异常
             throw new Exception("Automatic registration failed for service: $abstract. Neither interface nor service class found.");
