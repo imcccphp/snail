@@ -6,7 +6,6 @@ namespace Imccc\Snail;
 defined('CONFIG_PATH') || define('CONFIG_PATH', dirname(__DIR__) . '/src/limbs/config');
 defined('CFG_EXT') || define('CFG_EXT', '.conf.php');
 
-use Imccc\Snail\Core\Config;
 use Imccc\Snail\Core\Container;
 use Imccc\Snail\Core\Dispatcher;
 use Imccc\Snail\Core\HandlerException;
@@ -24,8 +23,6 @@ class Snail
 
     public function __construct()
     {
-        // 配置
-        $this->config = Config::get('snail.on');
         $this->initializeContainer();
         $this->run();
     }
@@ -35,12 +32,10 @@ class Snail
      */
     public function run()
     {
-        // 配置
-        $this->config = Config::get('snail.on');
         set_error_handler([HandlerException::class, 'handleException']); // 注册全局异常处理函数
         $d = new Router(); //初始化路由
         $this->router = $d->getRouteInfo(); //获取路由信息
-        $dispatch = new Dispatcher($this->router); //初始化分发器
+        $dispatch = new Dispatcher($this->container, $this->router); //初始化分发器
         $dispatch->dispatch(); //分发
     }
 
@@ -50,12 +45,22 @@ class Snail
     protected function initializeContainer()
     {
         $this->container = Container::getInstance();
+       
+        // 配置服务
+        $config = $this->container->resolve('ConfigService');
+
+        // 配置
+        $this->config = $config->get('snail.on');
+
+        // 日志服务
+        $this->logger = $this->container->resolve('LoggerService');
+
     }
 
     /**
      * 获取服务
      */
-    public function getServices()
+   public function getServices()
     {
         // 获取所有已经注册的服务
         $bindings = $this->container->getBindings();
@@ -83,15 +88,15 @@ class Snail
 
     }
 
+
     /**
      * 销毁
      */
     public function __destruct()
     {
-        $this->logger = $this->container-resolve('logger');
-        $this->logger->log('Snail Destroyed');
+        $this->logger->log('Snail Run Success');
         if (Defined('START_TIME')) {
-            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS <br>";
+            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS";
         }
         if ($this->config['container']) {
             $this->getServices();

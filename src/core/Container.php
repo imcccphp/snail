@@ -137,7 +137,7 @@ class Container
             if (class_exists($concreteClass)) {
                 $this->bind($abstract, $concreteClass);
                 // 添加别名，以不带命名空间的服务名为准
-                $this->alias(basename($abstract), $serviceNamespace . '\\' . $abstract);
+                $this->alias(basename($abstract), $abstract);
             } else {
                 // 如果实体类不存在，则抛出异常
                 throw new Exception("Automatic registration failed for service: $abstract. Class $concreteClass does not exist.");
@@ -390,7 +390,7 @@ class Container
         // 注册插件
         $this->registerPlugin($pluginInstance);
     }
-    
+
     /**
      * 获取插件实例
      * @param string $name 插件名称
