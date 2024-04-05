@@ -9,10 +9,10 @@ class Dispatcher
     protected $middlewares = [];
     protected $container;
 
-    public function __construct(Container $container, $routes)
+    public function __construct($routes)
     {
         $this->routes = $routes;
-        $this->container = $container;
+        $this->container = Container::getInstance();
     }
 
     public function addMiddleware(string $middlewareClass)

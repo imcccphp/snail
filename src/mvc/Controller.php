@@ -28,9 +28,9 @@ class Controller
 
         $this->routes = $routes;
         $this->container = Container::getInstance();
-        $this->config = $container->resolve('ConfigService');
-        $this->logger = $container->resolve('LoggerService');
-        $this->api = $container->resolve('ApiService');
+        $this->config = $this->container->resolve('ConfigService');
+        $this->logger = $this->container->resolve('LoggerService');
+        $this->api = $this->container->resolve('ApiService');
         $this->_view = new View($this->container);
         $this->_model = new Model($this->container);
     }
