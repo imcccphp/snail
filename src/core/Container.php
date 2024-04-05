@@ -58,7 +58,7 @@ class Container
 
     /**
      * 获取所有服务别名
-     * 
+     *
      * @return array 所有服务别名
      */
     public function getAliases()
@@ -255,8 +255,9 @@ class Container
         foreach ($parameters as $parameter) {
             $dependency = $parameter->getClass();
 
-            // 如果参数是类类型，则递归调用 make 方法获取依赖的实例
-            if ($dependency !== null) {
+            // 检查参数是否是类类型，并且不是容器类自身
+            if ($dependency !== null && $dependency->name !== self::class) {
+                // 递归调用 make 方法获取依赖的实例
                 $dependencies[] = $this->make($dependency->name);
             } elseif ($parameter->isDefaultValueAvailable()) {
                 // 如果参数有默认值，则使用默认值
