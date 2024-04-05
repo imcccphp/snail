@@ -108,13 +108,8 @@ class Container
             }
 
         }
-        if ($abstract === 'Container' || $abstract === 'Imccc\Snail\Core\Container') {
-            return;
-        } else {
-            // 返回服务实例
-            return $this->make($abstract);
-        }
-
+        // 返回服务实例
+        return $this->make($abstract);
     }
 
     /**
