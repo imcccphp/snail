@@ -44,6 +44,16 @@ class SqlService
     }
 
     /**
+     * 常规日志
+     *
+     * @param string $msg 日志消息
+     */
+    public function log($msg)
+    {
+        $this->logger->logSql($msg, $this->logprefix[0]);
+    }
+
+    /**
      * 连接到数据库
      *
      * @return PDO PDO对象
@@ -58,9 +68,9 @@ class SqlService
             $this->pdo = new PDO($dsn, $dsnConfig['user'], $dsnConfig['password'], $dsnConfig['options'] + [PDO::ATTR_PERSISTENT => true]);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $this->logger->log('Connected to database');
+            $this->log('Connected to database');
         } catch (PDOException $e) {
-            $this->logger->log('Database Connection Error: ' . $e->getMessage());
+            $this->log('Database Connection Error: ' . $e->getMessage());
             throw new Exception('Database Connection Error: ' . $e->getMessage());
         }
     }
@@ -115,19 +125,9 @@ class SqlService
     protected function handleException(PDOException $e, $opt): void
     {
         // 这里可以添加异常处理逻辑，比如记录日志等
-        $this->logger->log('SQL Error: ' . $opt . $e->getMessage(), $this->logprefix[1]);
+        $this->log('SQL Error: ' . $opt . $e->getMessage(), $this->logprefix[1]);
         // throw $e; // 或者重新抛出异常
         throw new Exception($opt . $e->getMessage());
-    }
-
-    /**
-     * 常规日志
-     *
-     * @param string $msg 日志消息
-     */
-    public function log($msg)
-    {
-        $this->logger->log($msg, $this->logprefix[0]);
     }
 
     /**
@@ -489,7 +489,7 @@ class SqlService
         $values = implode(', ', array_fill(0, count($data), $placeholders));
 
         $sql = "INSERT INTO $table ($columns) VALUES $values";
-        $this->logger->log('Batch Insert: [' . $sql . ' Params: ' . json_encode($data) . ']');
+        $this->log('Batch Insert: [' . $sql . ' Params: ' . json_encode($data) . ']');
         try {
             $stmt = $this->pdo->prepare($sql);
             // 执行多次插入
@@ -528,7 +528,7 @@ class SqlService
                 }
 
                 $sql = "UPDATE $table SET " . implode(', ', $setClauses) . " WHERE $condition";
-                $this->logger->log('Batch Update: [' . $sql . ' Params: ' . json_encode($params) . ']');
+                $this->log('Batch Update: [' . $sql . ' Params: ' . json_encode($params) . ']');
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($params);
             }

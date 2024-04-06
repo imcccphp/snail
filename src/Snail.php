@@ -99,7 +99,7 @@ class Snail
 
     public function pushlog()
     {
-        $this->logger->log('Snail Run Success. Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms");
+        $this->logger->log('Snail Run Success. Use Times:' . (microtime(true) - START_TIME) * 1000 . " ms",$this->logprefix[1]);
     }
 
     /**

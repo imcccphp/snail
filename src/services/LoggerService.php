@@ -50,6 +50,21 @@ class LoggerService
     }
 
     /**
+     * 记录SQL调试信息 专为SQLSERVER使用
+     * @param string $message 日志内容
+     * @param string $prefix 日志前缀
+     */
+    public function logSql($message, $prefix = 'sql')
+    {
+        $pre = $this->config['logprefix'][$prefix] ?? '';
+        // SQL 调试信息,只能启示到文本中 
+        // 如果配置为使用文件记录日志且当前日志类型在配置中启用，则将日志加入队列
+        if ($this->config['on'][$prefix] ?? false) {
+            $this->enqueueLog("[$pre] $message", $prefix);
+        }
+    }
+
+    /**
      * 解析日志文件名
      *
      * @param string $type 日志类型
@@ -99,6 +114,12 @@ class LoggerService
 
         // 分别写入对应的文件
         foreach ($logsByFile as $filename => $messages) {
+            // 创建目录
+
+            if (!is_dir($this->config['log_file_path'])) {
+                mkdir($this->config['log_file_path'], 0777, true);
+            }
+
             file_put_contents($filename, implode(PHP_EOL, $messages) . PHP_EOL, FILE_APPEND);
         }
 
