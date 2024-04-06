@@ -8,15 +8,16 @@ class LoggerService
 {
     private $logQueue = []; // 日志队列，用于批量处理
     private $logFilePath; // 日志文件路径
-    private $config; // 日志配置
+    private $config; // 配置服务
+    private $logconf; // 日志配置
     private $container; // 容器
 
     public function __construct(Container $container)
     {
         $this->container = $container;
         // 解析配置服务并获取日志配置信息
-        $this->config = $this->container->resolve('ConfigService')->get('logger');
-
+        $this->config = $this->container->resolve('ConfigService');
+        $this->logconf = $this->config->get('logger');
         // 注册一个脚本结束时的回调，用于处理日志队列中剩余的日志
         register_shutdown_function([$this, 'flushLogs']);
     }
@@ -26,23 +27,23 @@ class LoggerService
      */
     public function log($message, $prefix = 'def')
     {
-        $pre = $this->config['logprefix'][$prefix] ?? '';
-        switch ($this->config['log_type']) {
+        $pre = $this->logconf['logprefix'][$prefix] ?? '';
+        switch ($this->logconf['log_type']) {
             case 'file':
                 // 如果配置为使用文件记录日志且当前日志类型在配置中启用，则将日志加入队列
-                if ($this->config['on'][$prefix] ?? false) {
+                if ($this->logconf['on'][$prefix] ?? false) {
                     $this->enqueueLog("[$pre] $message", $prefix);
                 }
                 break;
             case 'server':
                 // 如果配置为直接写入服务器日志，则直接写入
-                if ($this->config['on'][$prefix] ?? false) {
+                if ($this->logconf['on'][$prefix] ?? false) {
                     $this->logToServer("[$pre] $message");
                 }
                 break;
             case 'database':
                 // 如果配置为记录到数据库且当前日志类型在配置中启用，则记录到数据库
-                if ($this->config['on'][$prefix] ?? false) {
+                if ($this->logconf['on'][$prefix] ?? false) {
                     $this->logToDatabase("$message", $prefix);
                 }
                 break;
@@ -56,10 +57,10 @@ class LoggerService
      */
     public function logSql($message, $prefix = 'sql')
     {
-        $pre = $this->config['logprefix'][$prefix] ?? '';
-        // SQL 调试信息,只能启示到文本中 
+        $pre = $this->logconf['logprefix'][$prefix] ?? '';
+        // SQL 调试信息,只能启示到文本中
         // 如果配置为使用文件记录日志且当前日志类型在配置中启用，则将日志加入队列
-        if ($this->config['on'][$prefix] ?? false) {
+        if ($this->logconf['on'][$prefix] ?? false) {
             $this->enqueueLog("[$pre] $message", $prefix);
         }
     }
@@ -72,8 +73,8 @@ class LoggerService
      */
     private function resolveFilename($type)
     {
-        $filenamePrefix = $this->config['logprefix'][$type] ?? '_DEF_';
-        return $this->config['log_file_path'] . '/' . $filenamePrefix . date('YmdH') . '.log';
+        $filenamePrefix = $this->logconf['logprefix'][$type] ?? '_DEF_';
+        return $this->logconf['log_file_path'] . '/' . $filenamePrefix . date('YmdH') . '.log';
     }
 
     /**
@@ -90,7 +91,7 @@ class LoggerService
         $this->logQueue[] = $logEntry;
 
         // 如果达到批量处理的大小，则立即处理
-        if (count($this->logQueue) >= $this->config['batch_size']) {
+        if (count($this->logQueue) >= $this->logconf['batch_size']) {
             $this->flushLogs();
         }
     }
@@ -116,8 +117,8 @@ class LoggerService
         foreach ($logsByFile as $filename => $messages) {
             // 创建目录
 
-            if (!is_dir($this->config['log_file_path'])) {
-                mkdir($this->config['log_file_path'], 0777, true);
+            if (!is_dir($this->logconf['log_file_path'])) {
+                mkdir($this->logconf['log_file_path'], 0777, true);
             }
 
             file_put_contents($filename, implode(PHP_EOL, $messages) . PHP_EOL, FILE_APPEND);
@@ -151,9 +152,11 @@ class LoggerService
     {
         // 使用容器解析数据库服务
         $sqlService = $this->container->resolve('SqlService');
+        $prefix = $sqlService->getPrefix();
+        $realTableName = $prefix . $tableName;
 
         // 准备插入语句
-        $sql = "INSERT INTO {$tableName} (times, message, type) VALUES (:times, :message, :type)";
+        $sql = "INSERT INTO {$realTableName} (times, message, type) VALUES (:times, :message, :type)";
 
         // 准备参数数组
         $params = [
