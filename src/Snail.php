@@ -33,7 +33,7 @@ class Snail
     public function run()
     {
         set_error_handler([HandlerException::class, 'handleException']); // 注册全局异常处理函数
-        $d = new Router(); //初始化路由
+        $d = new Router($this->container); //初始化路由
         $this->router = $d->getRouteInfo(); //获取路由信息
         $dispatch = new Dispatcher($this->container, $this->router); //初始化分发器
         $dispatch->dispatch(); //分发
@@ -45,7 +45,7 @@ class Snail
     protected function initializeContainer()
     {
         $this->container = Container::getInstance();
-       
+
         // 配置服务
         $config = $this->container->resolve('ConfigService');
 
@@ -60,22 +60,19 @@ class Snail
     /**
      * 获取服务
      */
-   public function getServices()
+    public function getServices()
     {
         // 获取所有已经注册的服务
         $bindings = $this->container->getBindings();
         $alises = $this->container->getAliases();
         echo "-------------------------<br>";
-        
+
         // 遍历输出每个服务的信息
         foreach ($bindings as $serviceName => $binding) {
             echo "Service Name: $serviceName > ";
 
-            foreach ($alises as $aliasName => $alias) {
-                if ($alias == $serviceName) {
-                    echo "Alias: $aliasName<br>";
-                }
-            }
+            echo "Aliases: " . $alias[$serviceName] ?? '';
+
             // 检查具体实现类是否为闭包
             if ($binding['concrete'] instanceof Closure) {
                 echo "Concrete: Closure<br>";
@@ -88,7 +85,6 @@ class Snail
 
     }
 
-
     /**
      * 销毁
      */
@@ -96,7 +92,7 @@ class Snail
     {
         $this->logger->log('Snail Run Success');
         if (Defined('START_TIME')) {
-            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " MS";
+            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms. <br>";
         }
         if ($this->config['container']) {
             $this->getServices();

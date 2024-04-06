@@ -26,7 +26,6 @@ class LoggerService
      */
     public function log($message, $prefix = 'def')
     {
-        print_r($message);die;
         $pre = $this->config['logprefix'][$prefix] ?? '';
         switch ($this->config['log_type']) {
             case 'file':
