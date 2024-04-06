@@ -5,6 +5,7 @@ namespace Imccc\Snail;
 
 defined('CONFIG_PATH') || define('CONFIG_PATH', dirname(__DIR__) . '/src/limbs/config');
 defined('CFG_EXT') || define('CFG_EXT', '.conf.php');
+defined('START_TIME') || define('START_TIME', microtime(true));
 
 use Imccc\Snail\Core\Container;
 use Imccc\Snail\Core\Dispatcher;
@@ -18,6 +19,7 @@ class Snail
 
     protected $router;
     protected $config;
+    protected $logconf;
     protected $logger;
     protected $container;
 
@@ -25,6 +27,7 @@ class Snail
     {
         $this->initializeContainer();
         $this->run();
+        register_shutdown_function([$this, 'pushlog']);
     }
 
     /**
@@ -32,11 +35,20 @@ class Snail
      */
     public function run()
     {
-        set_error_handler([HandlerException::class, 'handleException']); // 注册全局异常处理函数
-        $d = new Router($this->container); //初始化路由
-        $this->router = $d->getRouteInfo(); //获取路由信息
-        $dispatch = new Dispatcher($this->container, $this->router); //初始化分发器
-        $dispatch->dispatch(); //分发
+        // 注册全局异常处理函数
+        set_error_handler([HandlerException::class, 'handleException']);
+
+        //初始化路由
+        $d = new Router($this->container);
+
+        //获取路由信息
+        $this->router = $d->getRouteInfo();
+
+        //初始化分发器
+        $dispatch = new Dispatcher($this->container, $this->router);
+
+        //分发
+        $dispatch->dispatch();
     }
 
     /**
@@ -47,13 +59,13 @@ class Snail
         $this->container = Container::getInstance();
 
         // 配置服务
-        $config = $this->container->resolve('ConfigService');
-
-        // 配置
-        $this->config = $config->get('snail.on');
+        $this->config = $this->container->resolve('ConfigService');
 
         // 日志服务
         $this->logger = $this->container->resolve('LoggerService');
+
+        // 配置
+        $this->logconf = $config->get('logger.on');
 
     }
 
@@ -65,24 +77,29 @@ class Snail
         // 获取所有已经注册的服务
         $bindings = $this->container->getBindings();
         $alises = $this->container->getAliases();
-        echo "-------------------------<br>";
+        $info = "-------------------------<br>";
 
         // 遍历输出每个服务的信息
         foreach ($bindings as $serviceName => $binding) {
-            echo "Service Name: $serviceName > ";
+            $info .= "Service Name: $serviceName > ";
 
-            echo "Aliases: " . $alias[$serviceName] ?? '';
+            $info .= "Aliases: " . $alises[$serviceName] . "<br>" ?? '' . "<br>";
 
             // 检查具体实现类是否为闭包
             if ($binding['concrete'] instanceof Closure) {
-                echo "Concrete: Closure<br>";
+                $info .= "Concrete: Closure<br>";
             } else {
-                echo "Concrete: " . (is_object($binding['concrete']) ? get_class($binding['concrete']) : $binding['concrete']) . "<br>";
+                $info .= "Concrete: " . (is_object($binding['concrete']) ? get_class($binding['concrete']) : $binding['concrete']) . "<br>";
             }
-            echo "Shared: " . ($binding['shared'] ? 'Yes' : 'No') . "<br>";
-            echo "-------------------------<br>";
+            $info .= "Shared: " . ($binding['shared'] ? 'Yes' : 'No') . "<br>";
+            $info .= "-------------------------<br>";
         }
+        return $info;
+    }
 
+    public function pushlog()
+    {
+        $this->logger->log('Snail Run Success. Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms");
     }
 
     /**
@@ -90,12 +107,14 @@ class Snail
      */
     public function __destruct()
     {
-        $this->logger->log('Snail Run Success');
-        if (Defined('START_TIME')) {
+        if ($this->config['usetime'] ?? false) {
             echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms. <br>";
         }
         if ($this->config['container']) {
-            $this->getServices();
+            if ($this->config['debug']) {
+                $this->logger->log('Services:' . $this->getServices());
+            }
+            echo $this->getServices();
         }
 
     }

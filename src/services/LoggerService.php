@@ -1,153 +1,104 @@
 <?php
-namespace Imccc\Snail\Services;
+declare (strict_types = 1);
 
-use Exception;
+namespace Imccc\Snail;
+
+defined('CONFIG_PATH') || define('CONFIG_PATH', dirname(__DIR__) . '/src/limbs/config');
+defined('CFG_EXT') || define('CFG_EXT', '.conf.php');
+defined('START_TIME') || define('START_TIME', microtime(true));
+
 use Imccc\Snail\Core\Container;
+use Imccc\Snail\Core\Dispatcher;
+use Imccc\Snail\Core\HandlerException;
+use Imccc\Snail\Core\Router;
 
-class LoggerService
+class Snail
 {
-    private $logQueue = []; // 日志队列，用于批量处理
-    private $logFilePath; // 日志文件路径
-    private $config; // 日志配置
-    private $container; // 容器
+    const SNAIL = 'Snail';
+    const SNAIL_VERSION = '0.0.1';
 
-    public function __construct(Container $container)
+    protected $router;
+    protected $config;
+    protected $logger;
+    protected $container;
+
+    public function __construct()
     {
-        $this->container = $container;
-        // 解析配置服务并获取日志配置信息
-        $this->config = $this->container->resolve('ConfigService')->get('logger');
-
-        // 注册一个脚本结束时的回调，用于处理日志队列中剩余的日志
-        register_shutdown_function([$this, 'flushLogs']);
+        $this->initializeContainer();
+        $this->run();
+        register_shutdown_function([$this, 'pushlog']);
     }
 
     /**
-     * 根据配置记录日志
+     * 运行入口
      */
-    public function log($message, $prefix = 'def')
+    public function run()
     {
-        $pre = $this->config['logprefix'][$prefix] ?? '';
-        switch ($this->config['log_type']) {
-            case 'file':
-                // 如果配置为使用文件记录日志且当前日志类型在配置中启用，则将日志加入队列
-                if ($this->config['on'][$prefix] ?? false) {
-                    $this->enqueueLog("[$pre] $message", $prefix);
-                }
-                break;
-            case 'server':
-                // 如果配置为直接写入服务器日志，则直接写入
-                if ($this->config['on'][$prefix] ?? false) {
-                    $this->logToServer("[$pre] $message");
-                }
-                break;
-            case 'database':
-                // 如果配置为记录到数据库且当前日志类型在配置中启用，则记录到数据库
-                if ($this->config['on'][$prefix] ?? false) {
-                    $this->logToDatabase("$message", $prefix);
-                }
-                break;
-        }
+        // 注册全局异常处理函数
+        set_error_handler([HandlerException::class, 'handleException']);
+
+        //初始化路由
+        $d = new Router($this->container);
+
+        //获取路由信息
+        $this->router = $d->getRouteInfo();
+
+        //初始化分发器
+        $dispatch = new Dispatcher($this->container, $this->router);
+
+        //分发
+        $dispatch->dispatch();
     }
 
     /**
-     * 解析日志文件名
-     *
-     * @param string $type 日志类型
-     * @return string 日志文件名
+     * 初始化服务容器并注册服务
      */
-    private function resolveFilename($type)
+    protected function initializeContainer()
     {
-        $filenamePrefix = $this->config['logprefix'][$type] ?? '_DEF_';
-        return $this->config['log_file_path'] . '/' . $filenamePrefix . date('YmdH') . '.log';
+        $this->container = Container::getInstance();
+
+        // 配置服务
+        $config = $this->container->resolve('ConfigService');
+
+        // 配置
+        $this->config = $config->get('snail.on');
+
+        // 日志服务
+        $this->logger = $this->container->resolve('LoggerService');
+
     }
 
     /**
-     * 将日志消息加入队列
+     * 获取服务
      */
-    private function enqueueLog($message, $prefix)
+    public function getServices()
     {
-        $logEntry = [
-            'time' => date('Y-m-d H:i:s'),
-            'message' => $message,
-            'filename' => $prefix,
-        ];
+        // 获取所有已经注册的服务
+        $bindings = $this->container->getBindings();
+        $alises = $this->container->getAliases();
+        $info = "-------------------------<br>";
 
-        $this->logQueue[] = $logEntry;
+        // 遍历输出每个服务的信息
+        foreach ($bindings as $serviceName => $binding) {
+            $info .= "Service Name: $serviceName > ";
 
-        // 如果达到批量处理的大小，则立即处理
-        if (count($this->logQueue) >= $this->config['batch_size']) {
-            $this->flushLogs();
+            $info .= "Aliases: " . $alises[$serviceName] . "<br>" ?? '' . "<br>";
+
+            // 检查具体实现类是否为闭包
+            if ($binding['concrete'] instanceof Closure) {
+                $info .= "Concrete: Closure<br>";
+            } else {
+                $info .= "Concrete: " . (is_object($binding['concrete']) ? get_class($binding['concrete']) : $binding['concrete']) . "<br>";
+            }
+            $info .= "Shared: " . ($binding['shared'] ? 'Yes' : 'No') . "<br>";
+            $info .= "-------------------------<br>";
         }
+        return $info;
     }
 
-    /**
-     * 立即将日志队列中的日志写入到文件中
-     */
-    public function flushLogs()
+    public function pushlog()
     {
-        // 如果队列为空，则直接返回
-        if (empty($this->logQueue)) {
-            return;
-        }
-
-        // 对日志进行分组处理，按照文件名分组
-        $logsByFile = [];
-        foreach ($this->logQueue as $logEntry) {
-            $filename = $this->resolveFilename($logEntry['filename']);
-            $logsByFile[$filename][] = "[" . $logEntry['time'] . "] - " . $logEntry['message'];
-        }
-
-        // 分别写入对应的文件
-        foreach ($logsByFile as $filename => $messages) {
-            file_put_contents($filename, implode(PHP_EOL, $messages) . PHP_EOL, FILE_APPEND);
-        }
-
-        // 清空日志队列
-        $this->logQueue = [];
-    }
-
-    /**
-     * 记录日志到服务器日志
-     *
-     * @param string $message 日志消息
-     */
-    private function logToServer($message)
-    {
-        // 添加时间戳到日志消息中
-        $logMessage = date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL;
-        // 记录到服务器日志
-        error_log($logMessage);
-    }
-
-    /**
-     * 记录日志到数据库
-     *
-     * @param string $message 日志消息
-     * @param string $type 日志类型
-     * @param string $tableName 数据库表名
-     */
-    private function logToDatabase($message, $type = '_DEF_', $tableName = 'logs')
-    {
-        // 使用容器解析数据库服务
-        $sqlService = $this->container->resolve('SqlService');
-
-        // 准备插入语句
-        $sql = "INSERT INTO {$tableName} (times, message, type) VALUES (:times, :message, :type)";
-
-        // 准备参数数组
-        $params = [
-            ':times' => date('Y-m-d H:i:s'),
-            ':message' => $message,
-            ':type' => $type,
-        ];
-
-        // 绑定参数并执行插入操作
-        try {
-            $sqlService->execute($sql, $params);
-        } catch (Exception $e) {
-            // 记录到服务器日志
-            error_log("_ERROR_ : Failed to log to database: " . $e->getMessage());
-        }
+        $this->logger->log('Snail Run Success. Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms");
     }
 
     /**
@@ -155,6 +106,16 @@ class LoggerService
      */
     public function __destruct()
     {
+        if ($this->confi['usetime']) {
+            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms. <br>";
+        }
+        if ($this->config['container']) {
+            if ($this->config['debug']) {
+                $this->logger->log('Services:' . $this->getServices());
+            }
+            echo $this->getServices();
+        }
 
     }
+
 }
