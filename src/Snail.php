@@ -18,9 +18,11 @@ class Snail
     const SNAIL_VERSION = '0.0.1';
 
     protected $router;
-    protected $config;
-    protected $logconf;
-    protected $logger;
+    protected $config; // 配置服务
+    protected $conf; // snail配置
+    protected $logconf; // 日志配置
+    protected $logger; // 日志服务
+    protected $logprefix = ['debug', 'error'];
     protected $container;
 
     public function __construct()
@@ -64,9 +66,10 @@ class Snail
         // 日志服务
         $this->logger = $this->container->resolve('LoggerService');
 
-        // 配置
-        $this->logconf = $config->get('logger.on');
+        // 日志配置
+        $this->logconf = $this->config->get('logger.on');
 
+        // 系统配置
     }
 
     /**
@@ -107,13 +110,14 @@ class Snail
      */
     public function __destruct()
     {
-        if ($this->config['usetime'] ?? false) {
-            echo '<br>Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms. <br>";
-        }
-        if ($this->config['container']) {
-            if ($this->config['debug']) {
-                $this->logger->log('Services:' . $this->getServices());
+        if ($this->logconf['debug'] && $this->logconf['log']) {
+
+            if ($this->logconf['usetime'] ?? false) {
+                $this->logger->log('Snail Run Success. Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms",$this->logprefix[0]);
+            } else {
+                $this->logger->log('Snail Run Success.');
             }
+            $this->logger->log('Services:' . $this->getServices(), $this->logprefix[0]);
             echo $this->getServices();
         }
 
