@@ -3,6 +3,7 @@
 return [
     'on' => [
         'def' => true,
+        'log' => true,
         'info' => true,
         'error' => true,
         'warning' => true,
@@ -22,6 +23,7 @@ return [
     ],
     'logprefix' => [
         'def' => '_DEF_',
+        'log' => '_LOG_',
         'info' => '_INFO_',
         'error' => '_ERROR_',
         'warning' => '_WARNING_',

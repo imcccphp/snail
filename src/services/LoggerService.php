@@ -150,11 +150,4 @@ class LoggerService
         }
     }
 
-    /**
-     * 销毁
-     */
-    public function __destruct()
-    {
-
-    }
 }

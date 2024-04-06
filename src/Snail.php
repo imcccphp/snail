@@ -27,9 +27,9 @@ class Snail
 
     public function __construct()
     {
+        register_shutdown_function([$this, 'pushlog']);
         $this->initializeContainer();
         $this->run();
-        register_shutdown_function([$this, 'pushlog']);
     }
 
     /**
@@ -81,13 +81,10 @@ class Snail
         $bindings = $this->container->getBindings();
         $alises = $this->container->getAliases();
         $info = "-------------------------<br>";
-
         // 遍历输出每个服务的信息
         foreach ($bindings as $serviceName => $binding) {
             $info .= "Service Name: $serviceName > ";
-
             $info .= "Aliases: " . $alises[$serviceName] . "<br>" ?? '' . "<br>";
-
             // 检查具体实现类是否为闭包
             if ($binding['concrete'] instanceof Closure) {
                 $info .= "Concrete: Closure<br>";
@@ -111,14 +108,9 @@ class Snail
     public function __destruct()
     {
         if ($this->logconf['debug'] && $this->logconf['log']) {
-
-            if ($this->logconf['usetime'] ?? false) {
-                $this->logger->log('Snail Run Success. Use Times:' . (microtime(true) - START_TIME) / 1000 . " ms",$this->logprefix[0]);
-            } else {
-                $this->logger->log('Snail Run Success.');
-            }
-            $this->logger->log('Services:' . $this->getServices(), $this->logprefix[0]);
-            echo $this->getServices();
+            $debug = $this->getServices();
+            $this->logger->log('Services:' . $debug, $this->logprefix[0]);
+            echo $debug;
         }
 
     }
